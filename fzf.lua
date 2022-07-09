@@ -8,7 +8,13 @@
 -- variable, or run 'clink set fzf.exe_location <directoryname>' to tell Clink
 -- where to find fzf.exe.
 --
--- The default key bindings are as follows, when using Clink v1.2.46 or higher:
+-- To use FZF integration, you may set key bindings manually in your .inputrc
+-- file, or you may use the default key bindings.  To use the default key
+-- bindings, run 'clink set fzf.default_bindings true'.
+--
+-- The key bindings when 'fzf.default_bindings' is true are as follows.  They
+-- are presented in .inputrc file format for convenience, if you want to add
+-- them to your .inputrc manually (perhaps with modifications).
 --[[
 
 # Default key bindings for fzf with Clink.
@@ -20,11 +26,6 @@
 "\e[27;5;32~": "luafunc:fzf_complete_force" # Ctrl+Space uses fzf to filter match completions (and supports '**' for recursive).
 
 ]]
--- Optional:  You can use your own custom key bindings if you want.  To do so,
--- run 'clink set fzf.default_bindings false' and add key bindings to your
--- .inputrc file manually.  The default key bindings are listed above in
--- .inputrc format for convenience.
---
 -- Optional:  You can set the following environment variables to customize the
 -- behavior:
 --
@@ -54,7 +55,14 @@ settings.add('fzf.exe_location', '', 'Location of fzf.exe if not on the PATH')
 
 if rl.setbinding then
 
-    settings.add('fzf.default_bindings', true, 'Use default key bindings', 'If the default key bindings interfere with your own, you can turn off the\ndefault key bindings and add bindings manually to your .inputrc file.\n\nChanging this takes effect for the next session.')
+    settings.add(
+        'fzf.default_bindings',
+        false,
+        'Use default key bindings',
+        'To avoid interference with your existing key bindings, key bindings for\n'..
+        'fzf are initially not enabled.  Set this to true to enable the default\n'..
+        'key bindings for fzf, or add bindings manually to your .inputrc file.\n\n'..
+        'Changing this takes effect for the next Clink session.')
 
     if settings.get('fzf.default_bindings') then
         rl.setbinding([["\C-t"]], [["luafunc:fzf_file"]])
