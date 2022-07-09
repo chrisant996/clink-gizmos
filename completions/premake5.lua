@@ -6,6 +6,8 @@
 --
 -- Uses argmatcher:setdelayinit() to dynamically (re-)initialize the argmatcher
 -- based on the current directory.
+--
+-- https://premake.github.io/
 
 if not clink then
     -- Probably getting loaded and run inside of Premake5 itself; bail out.
