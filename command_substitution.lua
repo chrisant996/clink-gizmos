@@ -71,14 +71,39 @@ if not clink.onfilterinput then
     return
 end
 
+local function find_command_end(line, s)
+    local quote
+    local level = 1
+    local i = s + 2
+    while i <= #line do
+        local c = line:sub(i, i)
+        if c == '"' then
+            quote = not quote
+        elseif quote then
+            -- Accept characters between quotes verbatim.
+        elseif c == '^' then
+            i = i + 1
+        elseif c == '(' then
+            level = level + 1
+        elseif c == ')' then
+            level = level - 1
+            if level == 0 then
+                return i
+            end
+        end
+        i = i + 1
+    end
+end
+
 local function substitution(line)
     local i = 1
     local result = ''
     local continue
     while true do
         -- Find a $(command).
-        local s,e = line:find('%$%([^)]*%)', i)
-        if not s then
+        local s = line:find('%$%(', i)
+        local e = s and find_command_end(line, s)
+        if not s or not e then
             -- Concat the rest of the input line.
             result = result..line:sub(i)
             break
