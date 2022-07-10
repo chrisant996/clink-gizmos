@@ -19,27 +19,27 @@ The "completions" subdirectory contains completion scripts for various commands,
 
 The "modules" subdirectory contains helper scripts that are used by the scripts in the other directories.
 
-## Features
+# Features
 
-### auto_argmatcher.lua
+## auto_argmatcher.lua
 
-### divider.lua
+## divider.lua
 
-### fzf.lua
+## fzf.lua
 
-### i.lua
+## i.lua
 
-### luaexec.lua
+## luaexec.lua
 
-### msbuild.lua
+## msbuild.lua
 
-### z_dir_popup.lua
+## z_dir_popup.lua
 
-## Rough Prototype Features
+# Rough Prototype Features
 
 Some of the included scripts are rough prototypes that can be useful, but are not fully functional and/or have potentially significant or dangerous limitations.  These prototype scripts are **disabled by default**, for safety and to avoid interference.  See below for information about each, and for how to enable each script if you wish.
 
-### fishcomplete.lua
+## fishcomplete.lua
 
 _Disabled by default.  To enable it, set the global variable `clink_gizmos_fishcomplete = true` in one of your Lua scripts that gets loaded before the clink-gizmos directory._
 
@@ -56,7 +56,7 @@ Variable | Value | Description
 
 > **Note:** The fishcomplete script does not yet handle the `-e`, `-p`, `-w`, or `-x` flags for the fish `complete` command.  It attempts to handle simple fish completion scripts, but it will likely malfunction with more sophisticated fish completion scripts.
 
-### command_substitution.lua
+## command_substitution.lua
 
 _Disabled by default.  To enable it, set the global variable `clink_gizmos_command_substitutions = true` in one of your Lua scripts that gets loaded before the clink-gizmos directory._
 
