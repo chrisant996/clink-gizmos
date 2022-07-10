@@ -9,6 +9,12 @@
 -- Emits:
 --      hello
 --
+-- Global configuration variables in Lua:
+--
+--      clink_gizmo_command_substitution
+--              [true|false]  Set this global variable to true to enable this
+--              script.  This script is disabled by default.
+--
 --
 -- IMPORTANT WARNINGS:
 --
@@ -40,6 +46,9 @@
 --
 -- CAVEATS:
 --
+--      This is a simple and stupid implementation, and will not work quite as
+--      expected in many cases.
+--
 --      This does not support nested substitutions; neither nested via typing
 --      nor nested via substitution.
 --
@@ -47,8 +56,20 @@
 --      affect the current shell's state:  changing env vars or cwd or etc do
 --      not affect the current shell.
 --
---      This is a simple and stupid implementation, and will not work quite as
---      expected in many cases.
+--      Newlines and tab characters in the output are replaced with spaces
+--      before substitution into the command line.
+--
+--      CMD does not support command lines longer than a total length of about
+--      8,000 characters.
+
+if not clink_gizmo_command_substitution then
+    return
+end
+
+if not clink.onfilterinput then
+    print('command_substitution.lua requires a newer version of Clink; please upgrade.')
+    return
+end
 
 local function substitution(line)
     local i = 1
@@ -97,6 +118,4 @@ local function substitution(line)
     return result, continue
 end
 
-if clink.onfilterinput then
-    clink.onfilterinput(substitution)
-end
+clink.onfilterinput(substitution)

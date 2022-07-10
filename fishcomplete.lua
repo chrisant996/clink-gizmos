@@ -8,6 +8,10 @@
 --
 -- Global configuration variables in Lua:
 --
+--      clink_gizmo_fishcomplete
+--              [true|false]  Set this to true to enable this script.  This
+--              script is disabled by default.
+--
 --      fishcomplete.banner
 --              [true|false]  Show feedback at top of screen when loading fish
 --              completions.
@@ -19,6 +23,10 @@
 -- fish 'complete' command.  It attempts to handle simple fish completion
 -- scripts, but it will likely malfunction with more sophisticated fish
 -- completion scripts.
+
+if not clink_gizmo_fishcomplete then
+    return
+end
 
 if not clink.oncommand then
     print('fishcomplete.lua requires a newer version of Clink; please upgrade.')
