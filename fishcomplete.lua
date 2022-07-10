@@ -1,28 +1,33 @@
 --------------------------------------------------------------------------------
+-- PROTOTYPE SCRIPT -- Disabled by default; see below for how to enable it.
+--------------------------------------------------------------------------------
 -- Usage:
 --
--- When a command is typed and it does not have an argmatcher, this script
+-- When a command is typed and it does not have an argmatcher, then fishcomplete
 -- automatically checks if there is a .fish file by the same name in the same
 -- directory as the command program, or in the directory specified by the
--- fishcomplete.completions_dir global variable.
+-- fishcomplete.completions_dir global variable.  If yes, then it attempts to
+-- parse the .fish file and create a Clink argmatcher from it.
 --
--- Global configuration variables in Lua:
+-- The following global configuration variables in Lua control how this script
+-- functions:
 --
 --      clink_gizmos_fishcomplete
 --              [true|false]  Set this to true to enable this script.  This
 --              script is disabled by default.
 --
 --      fishcomplete.banner
---              [true|false]  Show feedback at top of screen when loading fish
---              completions.
-
---      fishcomplete.completions_dir
---              [dir]  Path to fish completions files.
+--              [true|false]  Whether to show feedback at top of screen when
+--              loading fish completions.
 --
--- NOTE:  This script does not yet handle the -e, -p -w, or -x flags for the
--- fish 'complete' command.  It attempts to handle simple fish completion
--- scripts, but it will likely malfunction with more sophisticated fish
--- completion scripts.
+--      fishcomplete.completions_dir
+--              [directory]  Path to fish completions files.
+--
+--
+-- NOTE:  The fishcomplete script does not yet handle the -e, -p, -w, or -x
+-- flags for the fish "complete" command.  It attempts to handle simple fish
+-- completion scripts, but it will likely malfunction with more sophisticated
+-- fish completion scripts.
 
 if not clink_gizmos_fishcomplete then
     return

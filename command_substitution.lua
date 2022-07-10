@@ -1,66 +1,65 @@
 --------------------------------------------------------------------------------
+-- PROTOTYPE SCRIPT -- Disabled by default; see below for how to enable it.
+--------------------------------------------------------------------------------
 -- Usage:
 --
--- This simulates performing simple command substitutions similar to bash.
+-- This simulates very simplistic command substitutions similar to bash.  Any
+-- "$(command)" in a command line is replaced by the output from running the
+-- specified command.
 --
--- This:
---      echo $(echo hello)
+-- For example:
 --
--- Emits:
---      hello
+--      echo $(date /t & time /t)
 --
--- Global configuration variables in Lua:
+-- First runs "date /t & time /t" and replaces the "$(...)" with the output from
+-- the command.  Since the output is the current date and the current time,
+-- after command substitution the command line becomes something like:
+--
+--      echo Sat 07/09/2022  11:08 PM
+--
+-- And then finally the resulting command is executed.
+--
+-- The following global configuration variables in Lua control how this script
+-- functions:
 --
 --      clink_gizmos_command_substitution
 --              [true|false]  Set this global variable to true to enable this
 --              script.  This script is disabled by default.
 --
 --
--- IMPORTANT WARNINGS:
+-- IMPORTANT WARNING:  This is a very simple and stupid implementation, and it
+-- does not (and cannot) work the same as bash.  It will not work quite as
+-- expected in many cases.  But if the limitations are understood and respected,
+-- then it can still be useful and powerful.
 --
---      This is a very simple and stupid implementation, and it does not (and
---      cannot) work the same as bash.
 --
---          1.  WHETHER a command substitution runs is different!
---          2.  The ORDER in which command substitutions run is different!
+-- Here are some of the limitations:
 --
---      In bash, command substitution happens only IF and WHEN the corresponding
---      clause is evaluated by the shell script parser engine.
+--  - WHETHER a command substitution runs is different than in bash!
+--  - The ORDER in which command substitutions run is different than in bash!
+--  - Only a small subset of the bash syntax is supported.
+--  - Nested substitutions are not supported; neither nested via typing nor
+--    nested via substitution.
+--  - This spawns new cmd shells to invoke commands.  This means commands cannot
+--    affect the current shell's state:  changing env vars or cwd or etc do not
+--    affect the current shell.
+--  - Newlines and tab characters in the output are replaced with spaces before
+--    substitution into the command line.
+--  - CMD does not support command lines longer than a total length of about
+--    8,000 characters.
 --
---      In command_substitution.lua, command subsitution happens ALWAYS and
---      BEFORE passing the rest of the command line to CMD for processing.
+-- Bash intelligently skips command substitutions that don't need to be
+-- performed, for example in an `else` clause that is not reached.  But this
+-- script stupidly ALWAYS performs ALL command substitutions no matter whether
+-- CMD will actually reach processing that part of the command line.
 --
---      Bash intelligently skips command substitutions that don't need to be
---      performed, for example in an 'else' clause that is not reached.  But
---      this script stupidly ALWAYS performs command substitutions no matter
---      whether CMD will reach processing that part of the command line.
---
---      Bash intelligently performs command substitutions in the correct order
---      with respect to other parts of the command line that precede or follow
---      the command substitutions.  But this script stupidly performs ALL
---      command substitutions before any other processing happens.  That means
---      command substitutions can't successfully refer to or use outputs from
---      earlier parts of the command line -- because this script does not
---      understand the rest of the command line and doesn't evaluate things in
---      the right order.
---
--- CAVEATS:
---
---      This is a simple and stupid implementation, and will not work quite as
---      expected in many cases.
---
---      This does not support nested substitutions; neither nested via typing
---      nor nested via substitution.
---
---      Spawns new cmd shells to invoke commands.  This means commands cannot
---      affect the current shell's state:  changing env vars or cwd or etc do
---      not affect the current shell.
---
---      Newlines and tab characters in the output are replaced with spaces
---      before substitution into the command line.
---
---      CMD does not support command lines longer than a total length of about
---      8,000 characters.
+-- Bash intelligently performs command substitutions in the correct order with
+-- respect to other parts of the command line that precede or follow the command
+-- substitutions.  But this script stupidly performs ALL command substitutions
+-- BEFORE any other processing happens.  That means command substitutions can't
+-- successfully refer to or use outputs from earlier parts of the command line;
+-- because this script does not understand the rest of the command line and
+-- doesn't evaluate things in the right order.
 
 if not clink_gizmos_command_substitution then
     return
