@@ -11,7 +11,7 @@
 --
 -- Global configuration variables in Lua:
 --
---      clink_gizmo_command_substitution
+--      clink_gizmos_command_substitution
 --              [true|false]  Set this global variable to true to enable this
 --              script.  This script is disabled by default.
 --
@@ -62,7 +62,7 @@
 --      CMD does not support command lines longer than a total length of about
 --      8,000 characters.
 
-if not clink_gizmo_command_substitution then
+if not clink_gizmos_command_substitution then
     return
 end
 

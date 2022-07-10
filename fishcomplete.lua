@@ -8,7 +8,7 @@
 --
 -- Global configuration variables in Lua:
 --
---      clink_gizmo_fishcomplete
+--      clink_gizmos_fishcomplete
 --              [true|false]  Set this to true to enable this script.  This
 --              script is disabled by default.
 --
@@ -24,7 +24,7 @@
 -- scripts, but it will likely malfunction with more sophisticated fish
 -- completion scripts.
 
-if not clink_gizmo_fishcomplete then
+if not clink_gizmos_fishcomplete then
     return
 end
 
