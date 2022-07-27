@@ -251,8 +251,21 @@ end
 
 --------------------------------------------------------------------------------
 local function oncommand(line_state, info)
-    if not clink.getargmatcher(info.command) then
-        local command = clink.lower(path.getname(info.command))
+    if clink.getargmatcher(line_state) then
+        return
+    end
+
+    local file = clink.lower(path.getname(info.file))
+    if file and file ~= "" then
+        local entry = _config[file] or _config[path.getbasename(file)]
+        if entry then
+            build_argmatcher(entry)
+            return
+        end
+    end
+
+    local command = clink.lower(path.getname(info.command))
+    if command and command ~= "" then
         local entry = _config[command] or _config[path.getbasename(command)]
         if entry then
             build_argmatcher(entry)
