@@ -30,7 +30,7 @@
 --                                      -- (add /x for -x, etc).
 --                  }
 --
--- function make(command, help_flag, parser, config)
+-- function make(command, help_flag, parser, config, closure)
 --
 --      Makes a delayinit argmatcher for the command.  A completion script can
 --      be a single line, using this:
@@ -42,6 +42,8 @@
 --                  parsing into an argmatcher.
 --      parser      Optional parser to use (see run()).
 --      config      Optional table with configuration modes (see run()).
+--      closure     Optional function to call on completion of the argmatcher,
+--                  called as closure(argmatcher).
 --
 --
 -- Parser functions:
@@ -624,11 +626,14 @@ end
 
 --------------------------------------------------------------------------------
 local _inited = {}
-local function make(command, help_flag, parser, config)
+local function make(command, help_flag, parser, config, closure)
     clink.argmatcher(command):setdelayinit(function (argmatcher)
         if not _inited[command] then
             _inited[command] = true
             run(argmatcher, parser, help_flag and (command .. ' ' .. help_flag) or command, config)
+            if type(closure) == "function" then
+                closure(argmatcher)
+            end
         end
     end)
 end
