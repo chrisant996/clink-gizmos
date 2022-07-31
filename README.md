@@ -21,19 +21,18 @@ The "modules" subdirectory contains helper scripts that are used by the scripts 
 
 # Features
 
-## auto_argmatcher.lua
+Each script file contains usage information in comments at the top of the script file.
 
-## divider.lua
-
-## fzf.lua
-
-## i.lua
-
-## luaexec.lua
-
-## msbuild.lua
-
-## z_dir_popup.lua
+Script Name | Description
+-|-
+auto_argmatcher.lua | Reads a config file and automatically creates argmatchers (completion generators) for specified programs by parsing their help text output.  Refer to the usage information in the script file for details.
+divider.lua | Automatically prints a divider line before and after running certain commands.  The list of commands is configurable.  Refer to the usage information in the script file for details.
+fzf.lua | Adds support for using [fzf](https://github.com/junegunn/fzf) with Clink.  Refer to the usage information in the script file for how to activate key bindings.
+i.lua | Adds an `i {dir} {command}` command that changes to _{dir}_, runs _{command}_, and changes back to the original directory.  Refer to the usage information for details and other features.
+luaexec.lua | Some handy debugging aids to use with Clink Lua scripts.
+msbuild.lua | Argmatcher for MSBUILD.
+tilde_autoexpand.lua | Automatically expands tildes into the user's home directory (disabled by default; see usage information for how to enable it).
+z_dir_popup.lua | If you use [z.lua](https://github.com/skywind3000/z.lua) then this provides a popup listing of directories from z.
 
 # Rough Prototype Features
 
