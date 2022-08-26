@@ -628,6 +628,8 @@ end
 --------------------------------------------------------------------------------
 -- Argmatcher.
 
+-- luacheck: no max line length
+
 local algos = addexarg(clink.argmatcher(), {
     { 'v1',             'Optimal scoring algorithm (quality)' },
     { 'v2',             'Faster but not guaranteed to find the optimal result (performance)' },
