@@ -52,9 +52,6 @@ if not io.popenrw then
     return
 end
 
-package.path = debug.getinfo(1, "S").source:match[[^@?(.*[\/])[^\/]-$]] .."modules/?.lua;".. package.path
-require('arghelper')
-
 --------------------------------------------------------------------------------
 -- Settings available via 'clink set'.
 
@@ -490,11 +487,148 @@ clink.onbeginedit(function ()
 end)
 
 --------------------------------------------------------------------------------
+-- Argmatcher helpers (based on modules\arghelper.lua from
+-- https://github.com/vladimir-kotikov/clink-completions).
+
+local tmp = clink.argmatcher and clink.argmatcher() or clink.arg.new_parser()
+local meta = getmetatable(tmp)
+
+local addexarg
+local addexflags
+
+if true then
+    local link = "link"..tmp
+    local meta_link = getmetatable(link)
+
+    local function is_parser(x)
+        return getmetatable(x) == meta
+    end
+
+    local function is_link(x)
+        return getmetatable(x) == meta_link
+    end
+
+    local function add_elm(elm, list, descriptions, hide, in_opteq)
+        local arg
+        local opteq = in_opteq
+        if elm[1] then
+            arg = elm[1]
+        else
+            if type(elm) == "table" and not is_link(elm) and not is_parser(elm) then
+                return
+            end
+            arg = elm
+        end
+        if elm.opteq ~= nil then
+            opteq = elm.opteq
+        end
+
+        local t = type(arg)
+        local arglinked = is_link(arg)
+        if arglinked or is_parser(arg) then
+            t = "matcher"
+        elseif t == "table" then
+            if elm[4] then
+                t = "nested"
+            else
+                for _,scan in ipairs(elm) do
+                    if type(scan) == "table" then
+                        t = "nested"
+                        break
+                    end
+                end
+            end
+        end
+        if t == "string" or t == "number" or t == "matcher" then
+            if t == "matcher" then
+                table.insert(list, arg)
+                if opteq and arglinked and clink.argmatcher then
+                    local altkey
+                    if arg._key:sub(-1) == '=' then
+                        altkey = arg._key:sub(1, #arg._key - 1)
+                    else
+                        altkey = arg._key..'='
+                    end
+                    table.insert(hide, altkey)
+                    table.insert(list, { altkey..arg._matcher })
+                end
+            else
+                table.insert(list, tostring(arg))
+            end
+            if elm[2] and descriptions then
+                local name = arglinked and arg._key or arg
+                if elm[3] then
+                    descriptions[name] = { elm[2], elm[3] }
+                else
+                    descriptions[name] = { elm[2] }
+                end
+            end
+            if elm.hide then
+                local name = arglinked and arg._key or arg
+                table.insert(hide, name)
+            end
+        elseif t == "function" then
+            table.insert(list, arg)
+        elseif t == "nested" then
+            for _,sub_elm in ipairs(elm) do
+                add_elm(sub_elm, list, descriptions, hide, opteq)
+            end
+        else
+            pause("unrecognized input table format.")
+            error("unrecognized input table format.")
+        end
+    end
+
+    local function build_lists(tbl)
+        local list = {}
+        local descriptions = (not ARGHELPER_DISABLE_DESCRIPTIONS) and {} -- luacheck: no global
+        local hide = {}
+        if type(tbl) ~= "table" then
+            pause('table expected.')
+            error('table expected.')
+        end
+        for _,elm in ipairs(tbl) do
+            local t = type(elm)
+            if t == "table" then
+                add_elm(elm, list, descriptions, hide, tbl.opteq)
+            elseif t == "string" or t == "number" or t == "function" then
+                table.insert(list, elm)
+            end
+        end
+        list.fromhistory = tbl.fromhistory
+        list.nosort = tbl.nosort
+        return list, descriptions, hide
+    end
+
+    if true then
+        addexflags = function(parser, tbl)
+            local flags, descriptions, hide = build_lists(tbl)
+            parser:addflags(flags)
+            if descriptions then
+                parser:adddescriptions(descriptions)
+            end
+            if hide then
+                parser:hideflags(hide)
+            end
+            return parser
+        end
+    end
+    if true then
+        addexarg = function(parser, tbl)
+            local args, descriptions = build_lists(tbl)
+            parser:addarg(args)
+            if descriptions then
+                parser:adddescriptions(descriptions)
+            end
+            return parser
+        end
+    end
+end
+
+--------------------------------------------------------------------------------
 -- Argmatcher.
 
--- luacheck: no max line length
-
-local algos = clink.argmatcher():_addexarg({
+local algos = addexarg(clink.argmatcher(), {
     { 'v1',             'Optimal scoring algorithm (quality)' },
     { 'v2',             'Faster but not guaranteed to find the optimal result (performance)' },
 })
@@ -514,7 +648,7 @@ local hscrolloff = clink.argmatcher():addarg({fromhistory=true, '10'})
 local jumplabels = clink.argmatcher():addarg({fromhistory=true})
 local heights = clink.argmatcher():addarg({fromhistory=true, '10', '15', '20', '25%', '30%', '40%', '50%'})
 local minheight = clink.argmatcher():addarg({fromhistory=true, '10'})
-local layout = clink.argmatcher():_addexarg({
+local layout = addexarg(clink.argmatcher(), {
     nosort=true,
     { 'default',        'Display from the bottom of the screen' },
     { 'reverse',        'Display from the top of the screen' },
@@ -534,7 +668,7 @@ local borderstyle = clink.argmatcher():addarg({
 })
 local margin = clink.argmatcher():addarg({fromhistory=true, loopchars=',', '0', '1', '2'})
 local padding = clink.argmatcher():addarg({fromhistory=true, loopchars=',', '0', '1', '2'})
-local infostyle = clink.argmatcher():_addexarg({
+local infostyle = addexarg(clink.argmatcher(), {
     nosort=true,
     { 'default',        'Display on the next line to the prompt' },
     { 'inline',         'Display on the same line as the prompt' },
@@ -572,8 +706,7 @@ local query = clink.argmatcher():addarg({fromhistory=true})
 local filter = clink.argmatcher():addarg({fromhistory=true})
 local expect = clink.argmatcher():addarg({fromhistory=true, loopchars=','})
 
-clink.argmatcher('fzf')
-:_addexflags({
+addexflags(clink.argmatcher('fzf'), {
     opteq=true,
     -- Search options
     { '-x',                             'Extended-search mode (enabled by default; +x or --no-extended to disable)' },
