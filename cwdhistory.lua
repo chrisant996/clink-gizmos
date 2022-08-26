@@ -8,9 +8,7 @@
 
 --------------------------------------------------------------------------------
 if not io.sopen then
-    if log.info then
-        log.info("cwdhistory.lua requires a newer version of Clink.")
-    end
+    print("cwdhistory.lua requires a newer version of Clink; please upgrade.")
     return
 end
 

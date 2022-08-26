@@ -68,7 +68,7 @@
 
 --------------------------------------------------------------------------------
 if not clink.oncommand or not clink.getargmatcher then
-    log.info('auto_argmatcher.lua requires a newer version of Clink.')
+    print('auto_argmatcher.lua requires a newer version of Clink; please upgrade.')
     return
 end
 
