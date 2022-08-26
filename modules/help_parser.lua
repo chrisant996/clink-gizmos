@@ -74,15 +74,17 @@ if not clink then
     -- E.g. some unit test systems will run this module *outside* of Clink.
     return
 end
-if (clink.version_encoded or 0) < 10030010 then
-    print('The help_parser module requires a new version of Clink; please upgrade.')
+if (clink.version_encoded or 0) < 10030010 then -- Requires _argmatcher:setdelayinit().
+    if log.info then
+        log.info('The help_parser.lua module requires a newer version of Clink; please upgrade.')
+    end
     return
 end
 
 --------------------------------------------------------------------------------
 local function sentence_casing(text)
     if unicode.iter then
-        for str, value in unicode.iter(text) do
+        for str in unicode.iter(text) do -- luacheck: ignore 512
             return clink.upper(str) .. text:sub(#str + 1)
         end
         return text
@@ -122,18 +124,18 @@ local function is_dir_arg(display)
 end
 
 --------------------------------------------------------------------------------
-local function add_pending(context, flags, descriptions, hideflags, pending)
+local function add_pending(context, flags, descriptions, hideflags, pending) -- luacheck: no unused args
     if not pending.flag then
         return
     end
 
     if pending.has_arg and pending.display then
         if not pending.argmatcher then
-            if not pending.flag:match('[:=]$') and not pending.display:match('^[ \t]') then
+            if not pending.flag:match('[:=]$') and not pending.display:match('^[ \t]') then -- luacheck: ignore 542
                 -- -x<n> or -x[n] or -Tn or etc.  Argmatchers must be separated
                 -- from flag by : or = or space.  So, no argmatcher.
             else
-                local args = args or clink.argmatcher()
+                local args = clink.argmatcher()
                 if is_file_arg(pending.display) then
                     args:addarg(clink.filematches)
                 elseif is_dir_arg(pending.display) then
@@ -175,7 +177,7 @@ local function earlier_gap(a, b)
 end
 
 --------------------------------------------------------------------------------
-local function find_flag_gap(line)
+local function find_flag_gap(line, allow_no_gap)
     local colon  = { len=3, ofs=line:find(' : ') }
     local spaces = { len=2, ofs=line:find('  ') }
     local tab    = { len=1, ofs=line:find('\t') }
@@ -187,7 +189,11 @@ local function find_flag_gap(line)
 
     local space  = { len=1, ofs=line:find(' ') }
     if not space.ofs then
-        return { len=0, ofs=#line + 1 }
+        if allow_no_gap then
+            return { len=0, ofs=#line + 1 }
+        else
+            return
+        end
     end
 
     if not line:find('[ \t][-/][^ \t/]', space.ofs) then
@@ -213,7 +219,7 @@ local function basic_parser(context, flags, descriptions, hideflags, line)
     local indent,f = line:match('^([ \t]*)([-/].+)$')
     local pad,d
     if f then
-        local gap = find_flag_gap(f)
+        local gap = find_flag_gap(f, true--[[allow_no_gap]])
         if gap then
             d = f:sub(gap.ofs + gap.len):gsub('^[ \t]+', '')
             f = f:sub(1, gap.ofs - 1):gsub('[ \t]+$', '')
@@ -430,7 +436,7 @@ local function gnu_parser(context, flags, descriptions, hideflags, line)
                 context.desc = nil
             end
             for _,f in ipairs(context.pending) do
-                if f.flag == '-NUM' then
+                if f.flag == '-NUM' then -- luacheck: ignore 542
                     -- Clink can't represent minus followed by any number.
                 else
                     context.pending.flag = f.flag
@@ -455,8 +461,6 @@ local function gnu_parser(context, flags, descriptions, hideflags, line)
         -- Parse if the line declares one or more flags.
         local s = line:match('^  +(%-.+)$')
         if s then
-            local k
-            local f
             if context.carryover then
                 s = context.carryover .. ' ' .. s
                 context.carryover = nil
