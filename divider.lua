@@ -52,6 +52,10 @@ settings.add(
 --      ...output...
 --      ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔█took ELAPSED█
 --
+
+-- luacheck: globals divider_line
+-- luacheck: globals flexprompt
+
 divider_line = divider_line or {}
 
 local function is_divider_command(line)
@@ -81,19 +85,16 @@ local function make_divider_begin(line, transient)
             text_color = "\x1b[0;" .. text_color .. "m"
         end
 
-        local div = ""
         local hilite = "\x1b[" .. (divider_line.top_line_hilite_color or "1;97") .. "m"
         local lolite = "\x1b[" .. (divider_line.top_line_lolite_color or "38;5;252") .. "m"
         local top_char = divider_line.top_line_char or "-"
         local nbsp = " "
-        local leading_space = divider_line.left_justify_top and nbsp or " "
-        div = string.format("%s%s%s in %s%s%s at %s%s",
-                            hilite, clink.upper(command), text_color,
-                            lolite, os.getcwd(), text_color,
-                            os.date(), text_color)
-        local cellcount = console.cellcount(div)
+        local div = string.format("%s%s%s in %s%s%s at %s%s",
+                                  hilite, clink.upper(command), text_color,
+                                  lolite, os.getcwd(), text_color,
+                                  os.date(), text_color)
         if divider_line.left_justify_top then
-            cellcount = cellcount + 2   -- spc + text + spc
+            local cellcount = console.cellcount(div) + 2   -- spc + text + spc
             if cellcount >= console.getwidth() then
                 div = text_color .. nbsp .. div .. nbsp
             else
@@ -101,7 +102,6 @@ local function make_divider_begin(line, transient)
             end
         else
             local bar = string.rep(top_char, 4)
-            cellcount = cellcount + 10  -- bar + spc + text + spc + bar
             div = line_color .. bar .. text_color .. " " .. div .. " " .. line_color .. bar
         end
         div = div .. string.rep(top_char, console.getwidth() - 1 - console.cellcount(div)) .. "\x1b[m\n"
@@ -166,7 +166,7 @@ end
 local inited_beginedit
 local div_can_divide
 
-function div_prompt:filter(prompt)
+function div_prompt:filter(prompt) -- luacheck: no unused
     if not inited_beginedit then
         -- Defer adding the event handler for printing the divider end line to
         -- make sure it's printed AFTER flexprompt applies its 'spacing' mode.
@@ -180,7 +180,7 @@ function div_prompt:filter(prompt)
     maybe_print_divider_end()
 end
 
-function div_prompt:transientfilter(prompt)
+function div_prompt:transientfilter(prompt) -- luacheck: no unused
     local line = rl_state and rl_state.line_buffer
     local div = make_divider_begin(line, true)
     if div then

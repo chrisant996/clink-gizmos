@@ -21,7 +21,7 @@ if not clink.popuplist then
     return
 end
 
-function z_dir_popup(rl_buffer)
+function z_dir_popup(rl_buffer) -- luacheck: no global
     local z = os.getalias("z")
     if z then
         z = z:match('^"([^"]+)"') or z:match('^([^ ]+)')

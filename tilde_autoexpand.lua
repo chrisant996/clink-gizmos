@@ -137,7 +137,7 @@ if clink.classifier then
 
     local clf = clink.classifier(999)
 
-    function clf:classify(commands)
+    function clf:classify(commands) -- luacheck: no unused
         if not settings.get("tilde.autoexpand") then
             return
         end
@@ -190,5 +190,5 @@ if clink.classifier then
             end
         end
     end
-    
+
 end

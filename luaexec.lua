@@ -40,6 +40,9 @@ end
 --------------------------------------------------------------------------------
 -- Settings configurable via `clink set`.
 
+-- luacheck: push
+-- luacheck: no max line length
+
 settings.add("color.luaprefix", "bright cyan on blue", "Color for 'rem lua:' prefix")
 settings.add("color.luacode", "", "Color for Lua code")
 settings.add("lua.type_colors",
@@ -47,6 +50,8 @@ settings.add("lua.type_colors",
              "Colors for Lua matches, by type",
              "The format is a series of type=color pairs, separated by spaces or commas.")
 settings.add("lua.show_match_type", true, "Show Lua type in parens for matches")
+
+-- luacheck: pop
 
 --------------------------------------------------------------------------------
 -- Internal data.
@@ -71,6 +76,7 @@ end
 --------------------------------------------------------------------------------
 -- Get a variable's content as a string.
 
+-- luacheck: globals getvar
 function getvar(name)
     if name == nil or name == "" then return nil end
 
@@ -113,6 +119,7 @@ local function format_var_name(var_name, var_type)
 end
 
 local _dumping = 0
+-- luacheck: globals dumpvar
 function dumpvar(value, depth, name, indent, comma)
     if _dumping == 0 then
         _type_colors = get_lua_type_colors()
@@ -246,7 +253,7 @@ end
 
 local lua_generator = clink.generator(lua_priority)
 
-local function xlate_matches(matches) 
+local function xlate_matches(matches)
     local new_matches = {}
     local type_colors = get_lua_type_colors()
     local type_color = type_colors["types"] or "\x1b[m"
@@ -292,7 +299,7 @@ local function parse_end_word(line_state)
     return pos
 end
 
-function lua_generator:getwordbreakinfo(line_state)
+function lua_generator:getwordbreakinfo(line_state) -- luacheck: no unused
     if not is_lua_code(line_state) then return end
 
     local pos = parse_end_word(line_state)
@@ -301,7 +308,7 @@ function lua_generator:getwordbreakinfo(line_state)
     return pos - 1
 end
 
-function lua_generator:generate(line_state, match_builder)
+function lua_generator:generate(line_state, match_builder) -- luacheck: no unused
     if not is_lua_code(line_state) then return false end
 
     local info = line_state:getwordinfo(line_state:getwordcount())
@@ -334,7 +341,7 @@ function lua_generator:generate(line_state, match_builder)
             parent = parent or _G
             parentname = parentname and parentname.."." or ""
             local prefix = fields[index]:lower()
-            for name,value in pairs(parent or _G) do
+            for name,_ in pairs(parent or _G) do
                 if #prefix == 0 or name:sub(1, #prefix):lower() == prefix then
                     match_builder:addmatch(parentname..name, "word")
                 end
@@ -361,7 +368,7 @@ end
 -- Apply input line coloring in Lua Execute mode.
 
 local lua_classifier = clink.classifier(lua_priority)
-function lua_classifier:classify(commands)
+function lua_classifier:classify(commands) -- luacheck: no unused
     if commands and commands[1] then
         local line_state = commands[1].line_state
         local classifications = commands[1].classifications
@@ -375,7 +382,7 @@ function lua_classifier:classify(commands)
 
             local prefix = line:sub(start, length):gsub(" +$", "")
             local prefix_end = #prefix
-            local tmp, prefix_start = line:find("^ +")
+            local _, prefix_start = line:find("^ +")
             prefix_start = (prefix_start or 0) + 1
 
             classifications:applycolor(prefix_start, prefix_end + 1 - prefix_start, luaprefix_color)
@@ -428,6 +435,7 @@ end
 --------------------------------------------------------------------------------
 -- Luafunc command:  Toggles Lua Execute mode.
 
+-- luacheck: globals clink_execute_lua
 function clink_execute_lua(rl_buffer)
     local line = rl_buffer:getbuffer()
     local prefix = line:match(lua_prefix_match)
@@ -445,6 +453,7 @@ end
 --------------------------------------------------------------------------------
 -- Luafunc command:  Expand the value of the Lua variable under the cursor.
 
+-- luacheck: globals clink_expand_lua_var
 function clink_expand_lua_var(rl_buffer, line_state)
     local endwordoffset
     local cursor = rl_buffer:getcursor()
@@ -484,6 +493,7 @@ end
 -- Luafunc command:  Moves cursor to the beginning of Lua code, or to the
 -- beginning of the line.
 
+-- luacheck: globals luaexec_begin_line
 function luaexec_begin_line(rl_buffer)
     local line = rl_buffer:getbuffer()
     local prefix = line:match(lua_prefix_match)
@@ -498,6 +508,7 @@ end
 -- Luafunc command:  Extends the selection to the beginning of Lua code, or to
 -- the beginning of the line.
 
+-- luacheck: globals luaexec_shift_begin_line
 function luaexec_shift_begin_line(rl_buffer)
     local line = rl_buffer:getbuffer()
     local prefix = line:match(lua_prefix_match)
@@ -513,6 +524,7 @@ end
 -- selects the whole line.  Toggles between Lua code and the whole line, if the
 -- Clink version supports it.
 
+-- luacheck: globals luaexec_select_all
 function luaexec_select_all(rl_buffer)
     local line = rl_buffer:getbuffer()
     local prefix = line:match(lua_prefix_match)
@@ -540,6 +552,7 @@ function luaexec_select_all(rl_buffer)
 end
 
 --------------------------------------------------------------------------------
+-- luacheck: globals luaexec_pause
 function luaexec_pause()
 	pause("Break into Lua debugger...")
 end

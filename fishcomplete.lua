@@ -29,7 +29,7 @@
 -- completion scripts, but it will likely malfunction with more sophisticated
 -- fish completion scripts.
 
-if not clink_gizmos_fishcomplete then
+if not clink_gizmos_fishcomplete then -- luacheck: no global
     return
 end
 
@@ -42,6 +42,7 @@ end
 -- Global config variables (set them in a separate Lua script, e.g. in your
 -- Clink profile directory).
 
+-- luacheck: globals fishcomplete
 fishcomplete = fishcomplete or {}
 if fishcomplete.banner == nil then
     fishcomplete.banner = true
@@ -156,7 +157,7 @@ local _command = {
 local _condition = {
     arg=true,
     func=function (state, arg)
-        if arg == '__fish_use_subcommand' then
+        if arg == '__fish_use_subcommand' then -- luacheck: ignore 542
         else
             state.flags = nil
             state.failure = 'unrecognized condition "'..arg..'"'
@@ -206,25 +207,25 @@ local _arguments = {
 }
 
 local _keep_order = {
-    func=function (state, arg)
+    func=function (state, arg) -- luacheck: no unused
         state.nosort = true
     end
 }
 
 local _no_files = {
-    func=function (state, arg)
+    func=function (state, arg) -- luacheck: no unused
         state.nofiles = true
     end
 }
 
 local _force_files = {
-    func=function (state, arg)
+    func=function (state, arg) -- luacheck: no unused
         state.forcefiles = true
     end
 }
 
 local _require_parameter = {
-    func=function (state, arg)
+    func=function (state, arg) -- luacheck: no unused
         if not state.linked_parser then
             state.linked_parser = clink.argmatcher()
         end
@@ -313,8 +314,8 @@ local function parse_fish_completions(name, fish)
             end
 
             if state.linked_parser then
-                for i = 1, #state.flags, 1 do
-                    state.flags[i] = state.flags[i] .. state.linked_parser
+                for j = 1, #state.flags, 1 do
+                    state.flags[j] = state.flags[j] .. state.linked_parser
                 end
             end
 
@@ -354,16 +355,19 @@ local function oncommand(line_state, info)
             return
         end
 
+        local top = '\x1b[s\x1b[H'
+        local restore = '\x1b[K\x1b[m\x1b[u'
+
         fish = path.getname(fish)
         if ok then
-            clink.print('\x1b[s\x1b[H\x1b[0;48;5;56;1;97mCompletions loaded from "'..fish..'".\x1b[K\x1b[m\x1b[u', NONL)
+            clink.print(top..'\x1b[0;48;5;56;1;97mCompletions loaded from "'..fish..'".'..restore, NONL)
         else
             if failure then
                 failure = '; '..failure..'.'
             else
                 failure = '.'
             end
-            clink.print('\x1b[s\x1b[H\x1b[0;48;5;52;1;97mFailed reading "'..fish..'"'..failure..'\x1b[K\x1b[m\x1b[u', NONL)
+            clink.print(top..'\x1b[0;48;5;52;1;97mFailed reading "'..fish..'"'..failure..restore, NONL)
         end
     end
 end

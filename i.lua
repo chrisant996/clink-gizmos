@@ -39,8 +39,10 @@ end
 --      If both name and color are present, then color is appended to the color
 --      value fetched by the color setting name.
 
+-- luacheck: globals i_commands
 i_commands = i_commands or "i"
 
+-- luacheck: globals i_colors
 i_colors = i_colors or {
     [true] =    { name="color.executable", color=";4" },
     [false] =   { name="color.unrecognized", color=";4" },
@@ -64,9 +66,6 @@ local function i_getcolor(isdir)
     end
     return sgr
 end
-
-local i_color
-local i_append_color = ";4"
 
 local function i_getdir(line)
     -- Check for "i" command.
@@ -112,7 +111,7 @@ local function i_filter(line)
     if dir == "-?" or dir == "--help" then
         print("Runs a command in a directory, restoring the current directory afterwards.")
         print()
-        print(clink.upper(command_name).." dir command")
+        print(clink.upper(command_name).." dir command") -- luacheck: ignore 113
         print()
         print("  dir       Change to dir.")
         print("  command   Command to run in dir.")
@@ -134,7 +133,7 @@ local function i_filter(line)
     return lines, false
 end
 
-local function i_ondir(arg_index, word, word_index, line_state)
+local function i_ondir(arg_index, word, word_index, line_state) -- luacheck: no unused
     local info = line_state:getwordinfo(word_index)
     if info and info.offset + info.length < line_state:getcursor() then
         os.chdir(word)

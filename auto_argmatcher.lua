@@ -132,7 +132,7 @@ local function load_config_file(name)
 
     local any
     for line in file:lines() do
-        if #line == 0 or line:find('^[#;/]') then
+        if #line == 0 or line:find('^[#;/]') then -- luacheck: ignore 542
             -- Ignore the line.
         else
             -- First word is command, second word is flags (can be quoted).
@@ -178,7 +178,7 @@ local function load_config()
 
     local any
 
-    any = load_config_file(get_config_file(os.getenv('=clink.profile'))) or any
+    any = load_config_file(get_config_file(os.getenv('=clink.profile'))) or any -- luacheck: ignore 321
     any = load_config_file(get_config_file()) or any
 
     return any

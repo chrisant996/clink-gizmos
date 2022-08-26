@@ -61,7 +61,7 @@
 -- because this script does not understand the rest of the command line and
 -- doesn't evaluate things in the right order.
 
-if not clink_gizmos_command_substitution then
+if not clink_gizmos_command_substitution then -- luacheck: no global
     return
 end
 
@@ -78,7 +78,7 @@ local function find_command_end(line, s)
         local c = line:sub(i, i)
         if c == '"' then
             quote = not quote
-        elseif quote then
+        elseif quote then -- luacheck: ignore 542
             -- Accept characters between quotes verbatim.
         elseif c == '^' then
             i = i + 1
