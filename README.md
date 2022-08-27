@@ -57,7 +57,7 @@ Variable | Value | Description
 
 ## command_substitution.lua
 
-_Disabled by default.  To enable it, set the global variable `clink_gizmos_command_substitutions = true` in one of your Lua scripts that gets loaded before the clink-gizmos directory._
+_Disabled by default.  To enable it, set the global variable `clink_gizmos_command_substitution = true` in one of your Lua scripts that gets loaded before the clink-gizmos directory._
 
 This simulates very simplistic command substitutions similar to bash.  Any `$(command)` in a command line is replaced by the output from running the specified command.
 
