@@ -70,6 +70,8 @@ if not clink.onfilterinput then
     return
 end
 
+settings.add('color.command_substitution', 'sgr 7', 'Color for command substitutions')
+
 local function find_command_end(line, s)
     local quote
     local level = 1
@@ -143,3 +145,35 @@ local function substitution(line)
 end
 
 clink.onfilterinput(substitution)
+
+local cl = clink.classifier(1)
+
+function cl:classify(commands)
+    if not commands[1] then
+        return
+    end
+
+    local color = settings.get('color.command_substitution')
+    if not color or color == '' then
+        return
+    end
+
+    local line_state = commands[1].line_state
+    local classifications = commands[1].classifications
+    local line = line_state:getline()
+
+    local i = 1
+    while true do
+        -- Find a $(command).
+        local s = line:find('%$%(', i)
+        local e = s and find_command_end(line, s)
+        if not s or not e then
+            break
+        end
+
+        -- Apply color.
+        classifications:applycolor(s, e + 1 - s, color, true--[[overwrite]])
+
+        i = e + 1
+    end
+end
