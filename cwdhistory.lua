@@ -118,10 +118,11 @@ end
 local function update_history()
     local f
     local history_filename = get_history_filename()
+    local binmode = io.truncate and "" or "b"
 
     -- Create the history file if it doesn't exist yet.
     if not os.isfile(history_filename) then
-        f = io.sopen(history_filename, "wxb", "rw")
+        f = io.sopen(history_filename, "wx"..binmode, "rw")
         if not f then
             return
         end
@@ -132,7 +133,7 @@ local function update_history()
     -- Try for up to 2 seconds, and then give up.
     local start_clock = os.clock()
     repeat
-        f = io.sopen(history_filename, "r+b", "rw")
+        f = io.sopen(history_filename, "r+"..binmode, "rw")
     until f or os.clock() - start_clock > 2
 
     if not f then
@@ -174,17 +175,21 @@ local function update_history()
             end
         end
 
-        local truncate = f:seek()
-        local excess = file_size - truncate
+        if io.truncate then
+            io.truncate(f)
+        else
+            local truncate = f:seek()
+            local excess = file_size - truncate
 
-        local fill = string.rep("\n", 512)
-        while excess >= #fill do
-            f:write(fill)
-            excess = excess - #fill
-        end
+            local fill = string.rep("\n", 512)
+            while excess >= #fill do
+                f:write(fill)
+                excess = excess - #fill
+            end
 
-        if excess > 0 then
-            f:write(fill:sub(1, excess))
+            if excess > 0 then
+                f:write(fill:sub(1, excess))
+            end
         end
     end
 
