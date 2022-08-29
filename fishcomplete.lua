@@ -48,6 +48,8 @@ if fishcomplete.banner == nil then
     fishcomplete.banner = true
 end
 
+-- luacheck: globals NONL
+
 --------------------------------------------------------------------------------
 -- Options helpers.
 

@@ -195,7 +195,7 @@ clink.onendedit(function (line)
         if div_can_divide then
             local div = make_divider_begin(line)
             if div then
-                clink.print(div, NONL)
+                clink.print(div, NONL) -- luacheck: globals NONL
             end
         end
     else

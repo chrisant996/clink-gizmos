@@ -22,7 +22,6 @@ return {
         "coroutine.override_src",
         "io",
         "log",
-        "NONL",
         "os",
         "path",
         "pause",

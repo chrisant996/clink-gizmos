@@ -176,7 +176,7 @@ function dumpvar(value, depth, name, indent, comma)
         end
     end
 
-    if name then clink.print(indent..format_var_name(name, t).." = ", NONL) end
+    if name then clink.print(indent..format_var_name(name, t).." = ", NONL) end -- luacheck: globals NONL
     clink.print(value..comma)
 
     _dumping = _dumping - 1
@@ -221,7 +221,7 @@ local function execute_lua(line)
             if res[2] then
                 table.remove(res, 1)
                 for _,v in ipairs(res) do
-                    clink.print(tostring(v).."\t", NONL)
+                    clink.print(tostring(v).."\t", NONL) -- luacheck: globals NONL
                 end
                 clink.print()
             end
