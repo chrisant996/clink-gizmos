@@ -148,7 +148,7 @@ clink.onfilterinput(substitution)
 
 local cl = clink.classifier(1)
 
-function cl:classify(commands)
+function cl:classify(commands) -- luacheck: no unused
     if not commands[1] then
         return
     end
