@@ -433,9 +433,17 @@ else
 end
 
 --------------------------------------------------------------------------------
+local function add_desc(macro, desc)
+    if rl.describemacro then
+        rl.describemacro(macro, desc)
+    end
+end
+
+--------------------------------------------------------------------------------
 -- Luafunc command:  Toggles Lua Execute mode.
 
 -- luacheck: globals clink_execute_lua
+add_desc("luafunc:clink_execute_lua", "Toggle Lua execution mode")
 function clink_execute_lua(rl_buffer)
     local line = rl_buffer:getbuffer()
     local prefix = line:match(lua_prefix_match)
@@ -454,6 +462,7 @@ end
 -- Luafunc command:  Expand the value of the Lua variable under the cursor.
 
 -- luacheck: globals clink_expand_lua_var
+add_desc("luafunc:clink_expand_lua_var", "Expand the value of the Lua variable under the cursor")
 function clink_expand_lua_var(rl_buffer, line_state)
     local endwordoffset
     local cursor = rl_buffer:getcursor()
@@ -494,6 +503,7 @@ end
 -- beginning of the line.
 
 -- luacheck: globals luaexec_begin_line
+add_desc("luafunc:luaexec_begin_line", "Moves cursor to the beginning of Lua code, or to the beginning of the line")
 function luaexec_begin_line(rl_buffer)
     local line = rl_buffer:getbuffer()
     local prefix = line:match(lua_prefix_match)
@@ -509,6 +519,7 @@ end
 -- the beginning of the line.
 
 -- luacheck: globals luaexec_shift_begin_line
+add_desc("luafunc:luaexec_shift_begin_line", "Extends the selection to the beginning of Lua code, or to the beginning of the line")
 function luaexec_shift_begin_line(rl_buffer)
     local line = rl_buffer:getbuffer()
     local prefix = line:match(lua_prefix_match)
@@ -525,6 +536,7 @@ end
 -- Clink version supports it.
 
 -- luacheck: globals luaexec_select_all
+add_desc("luafunc:luaexec_select_all", "Selects the Lua code in Lua Execute mode, otherwise it selects the whole line")
 function luaexec_select_all(rl_buffer)
     local line = rl_buffer:getbuffer()
     local prefix = line:match(lua_prefix_match)
@@ -553,6 +565,7 @@ end
 
 --------------------------------------------------------------------------------
 -- luacheck: globals luaexec_pause
+add_desc("luafunc:luaexec_pause", "Break into the Lua debugger")
 function luaexec_pause()
 	pause("Break into Lua debugger...")
 end

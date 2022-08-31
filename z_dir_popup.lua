@@ -21,6 +21,10 @@ if not clink.popuplist then
     return
 end
 
+if rl.describemacro then
+    rl.describemacro("luafunc:z_dir_popup", "Show a popup to pick from a directory known to z, and then change to the directory")
+end
+
 function z_dir_popup(rl_buffer) -- luacheck: no global
     local z = os.getalias("z")
     if z then

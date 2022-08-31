@@ -232,6 +232,11 @@ clink.onbeginedit(function ()
 end)
 
 --------------------------------------------------------------------------------
-if not rl.getbinding("") then
-    rl.setbinding([["\e[5;7~"]], [["luafunc:cwdhistory_popup"]])
+if rl.setbinding then
+    if not rl.getbinding([["\e[5;7~"]]) then
+        rl.setbinding([["\e[5;7~"]], [["luafunc:cwdhistory_popup"]])
+    end
+    if rl.describemacro then
+        rl.describemacro([["luafunc:cwdhistory_popup"]], "Show popup list of recent directories")
+    end
 end
