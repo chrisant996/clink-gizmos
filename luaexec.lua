@@ -519,7 +519,7 @@ end
 -- the beginning of the line.
 
 -- luacheck: globals luaexec_shift_begin_line
-add_desc("luafunc:luaexec_shift_begin_line", "Extends the selection to the beginning of Lua code, or to the beginning of the line")
+add_desc("luafunc:luaexec_shift_begin_line", "Extends the selection to the beginning of Lua code, or to the beginning of the line") -- luacheck: no max line length
 function luaexec_shift_begin_line(rl_buffer)
     local line = rl_buffer:getbuffer()
     local prefix = line:match(lua_prefix_match)

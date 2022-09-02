@@ -22,7 +22,7 @@ if not clink.popuplist then
 end
 
 if rl.describemacro then
-    rl.describemacro("luafunc:z_dir_popup", "Show a popup to pick from a directory known to z, and then change to the directory")
+    rl.describemacro("luafunc:z_dir_popup", "Show a popup to pick from a directory known to z, and then change to the directory") -- luacheck: no max line length
 end
 
 function z_dir_popup(rl_buffer) -- luacheck: no global
