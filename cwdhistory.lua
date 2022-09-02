@@ -17,6 +17,7 @@ settings.add("cwdhistory.limit", 100, "Limit the cwd history", "At most this man
 
 --------------------------------------------------------------------------------
 local cwd_history_list = {}
+local deletion_list
 
 --------------------------------------------------------------------------------
 local function add_and_update_index(list, entry, index, force)
@@ -79,23 +80,33 @@ local function merge_nodups(file)
         index[clink.lower(entry.dir)] = true
     end
 
-    -- Build list of dirs only in session history.
+    -- Build list of dirs added in session history.
     local new_dirs = {}
     for _, entry in ipairs(cwd_history_list) do
-        if not index[clink.lower(entry.dir)] then
+        if entry.keep and not index[clink.lower(entry.dir)] then
             table.insert(new_dirs, entry)
         end
     end
 
     -- Build reversed list with duplicates removed.
     local reversed = {}
-    local cwd_entry = { dir=os.getcwd(), time=os.time() }
+    local cwd_entry = { dir=os.getcwd(), time=os.time(), keep=true }
     add_and_update_index(reversed, cwd_entry, index, true--[[force]])
     for i = #new_dirs, 1, -1 do
         table.insert(reversed, new_dirs[i])
     end
     for i = #persisted_list, 1, -1 do
         add_and_update_index(reversed, persisted_list[i], index)
+    end
+
+    -- Apply deletions.
+    if deletion_list then
+        for i = #reversed, 1, -1 do
+            if deletion_list[clink.lower(reversed[i].dir)] then
+                table.remove(reversed, i)
+            end
+        end
+        deletion_list = nil
     end
 
     -- Prune to the limit, if any.
@@ -105,7 +116,7 @@ local function merge_nodups(file)
         end
     end
 
-    -- Revese the list again.
+    -- Reverse the list again.
     local output = {}
     for i = #reversed, 1, -1 do
         table.insert(output, reversed[i])
@@ -207,7 +218,21 @@ function cwdhistory_popup(rl_buffer) -- luacheck: no global
         table.insert(items, { value=entry.dir.."    ", description=time_str.."\t" })
     end
 
-    local value, shifted, index = clink.popuplist("Recently Used Directories", items, #cwd_history_list) -- luacheck: no unused, no max line length
+    local update
+    local function del_callback(index)
+        if cwd_history_list[index] then
+            deletion_list = deletion_list or {}
+            deletion_list[clink.lower(cwd_history_list[index].dir)] = true
+            table.remove(cwd_history_list, index)
+            update = true
+            return true
+        end
+    end
+
+    local value, shifted, index = clink.popuplist("Recently Used Directories", items, #cwd_history_list, del_callback) -- luacheck: no unused, no max line length
+    if update then
+        update_history()
+    end
     if not value then
         rl_buffer:ding()
         return
