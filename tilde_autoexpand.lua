@@ -162,11 +162,11 @@ if clink.classifier then
                                     local m = clink.getargmatcher(word) and "m" or ""
                                     c.classifications:classifyword(i, m..cl, true)
                                 end
-                                first_word = false
                             end
                             c.classifications:applycolor(info.offset, 1, color)
                         end
                     end
+                    first_word = false
                 end
             end
         end
