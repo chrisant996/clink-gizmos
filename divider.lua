@@ -4,6 +4,46 @@
 -- Automatically inserts a line divider line before running certain commands.
 -- The line is intended to make it easier to see where output from certain
 -- commands begins and ends (for example, commpilers and build tools).
+--
+-- The "divider_line.commands" setting is a list of command names, separated by
+-- spaces, which should display a divider line.
+--
+-- The "color.divider_line" and "color.divider_line_text" settings specify the
+-- colors for the beginning divider line.  The "color.divider_line_end" setting
+-- specifies the color for the ending divider lines.
+--
+-- Example setting usage:
+--
+--      Run "clink set divider_line.commands" to see the current command list.
+--
+--      Run "clink set divider_line.commands nmake msbuild dir findstr" to set
+--      the command list to show a divider line for "nmake", "msbuild", "dir",
+--      and "findstr" commands.
+--
+-- You can get fancy and do additional configuration via a Lua script.
+-- E.g. override the top and bottom line characters, and some other things.
+--
+-- For example:
+--
+--      divider_line = divider_line or {}
+--      divider_line.left_justify_top = true
+--      divider_line.top_line_color = "38;5;25"
+--      divider_line.top_line_hilite_color = "38;5;159"
+--      divider_line.top_line_lolite_color = "38;5;39"
+--      divider_line.top_line_char = "▁"
+--      divider_line.bottom_line_char = "▔"
+--      divider_line.bottom_line_hilite_color = "38;5;38"
+--      divider_line.bottom_line_reverse_video = false
+--
+-- Produces:
+--
+--      █COMMAND in DIR at TIME█▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+--      ...output...
+--      ...output...
+--      ...output...
+--      ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔█took ELAPSED█
+--
+--------------------------------------------------------------------------------
 
 if not clink.onbeginedit or not clink.onendedit or not console.cellcount then
     print('divider.lua requires a newer version of Clink; please upgrade.')
@@ -14,6 +54,12 @@ settings.add(
     "color.divider_line",
     "sgr 30;48;5;25",
     "Color for command divider line")
+
+settings.add(
+    "color.divider_line_text",
+    "",
+    "Color for command divider line text.  If not set, then color.divider_line is\n"..
+    "used for the divider line text.")
 
 settings.add(
     "color.divider_line_end",
@@ -29,29 +75,6 @@ settings.add(
     "commands is entered, a divider line is displayed before invoking the\n"..
     "command, and another elapsed time line is displayed after the command\n"..
     "finishes.")
-
--- You can get fancy and do additional configuration via a Lua script.
--- E.g. override the top and bottom line characters, and some other things.
---
--- For example:
---
---      divider_line = divider_line or {}
---      divider_line.left_justify_top = true
---      divider_line.top_line_color = "38;5;25"
---      divider_line.top_line_hilite_color = "38;5;159"
---      divider_line.top_line_lolite_color = "38;5;39"
---      divider_line.top_line_char = "▁"
---      divider_line.bottom_line_char = "▔"
---      divider_line.bottom_line_hilite_color = "38;5;38"
---
--- Produces:
---
---      █COMMAND in DIR at TIME█▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
---      ...output...
---      ...output...
---      ...output...
---      ▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔▔█took ELAPSED█
---
 
 -- luacheck: globals divider_line
 -- luacheck: globals flexprompt
@@ -155,7 +178,7 @@ local function maybe_print_divider_end()
         text = "\x1b[7m" .. text
     end
     if divider_line.bottom_line_reverse_video then
-        text = text .. " "
+        text = text .. " " -- A non-space invisible character.
     end
 
     local bottom_char = divider_line.bottom_line_char or "-"

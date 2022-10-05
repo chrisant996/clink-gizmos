@@ -3,8 +3,16 @@
 --
 -- Maintains a list of recent current working directories.
 --
--- Alt-Ctrl-PgUp is the default key binding to show a popup list of recent
+-- The "cwdhistory.limit" setting specifies how many recently used current
+-- working directories will be remembered.  The default limit is 100.
+--
+-- Shift-PgUp is the default key binding to show a popup list of recent
 -- directories, unless it has already been bound to something else.
+--
+-- To bind a different key, add a key binding for "luafunc:cwdhistory_popup" to
+-- your .inputrc file.
+-- See https://chrisant996.github.io/clink/clink.html#customizing-key-bindings
+-- for more information on key bindings.
 
 --------------------------------------------------------------------------------
 if not io.sopen then
@@ -258,8 +266,8 @@ end)
 
 --------------------------------------------------------------------------------
 if rl.setbinding then
-    if not rl.getbinding([["\e[5;7~"]]) then
-        rl.setbinding([["\e[5;7~"]], [["luafunc:cwdhistory_popup"]])
+    if not rl.getbinding([["\e[5;2~"]]) then
+        rl.setbinding([["\e[5;2~"]], [["luafunc:cwdhistory_popup"]])
     end
     if rl.describemacro then
         rl.describemacro([["luafunc:cwdhistory_popup"]], "Show popup list of recent directories")
