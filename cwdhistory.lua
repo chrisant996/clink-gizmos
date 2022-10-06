@@ -1,18 +1,50 @@
 --------------------------------------------------------------------------------
 -- CWD History
 --
--- Maintains a list of recent current working directories.
+-- Maintains a list of recent current working directories.  Also provides some
+-- directory completion commands.
 --
 -- The "cwdhistory.limit" setting specifies how many recently used current
 -- working directories will be remembered.  The default limit is 100.
 --
--- Shift-PgUp is the default key binding to show a popup list of recent
--- directories, unless it has already been bound to something else.
+-- History:
 --
--- To bind a different key, add a key binding for "luafunc:cwdhistory_popup" to
--- your .inputrc file.
--- See https://chrisant996.github.io/clink/clink.html#customizing-key-bindings
--- for more information on key bindings.
+--      Shift-PgUp is the default key binding to show a popup list of recent
+--      directories, unless it has already been bound to something else.
+--
+-- Completion:
+--
+--      Ctrl-\ is the default key binding to cycle through directory matches for
+--      the word at the cursor.  Ctrl-Shift-\ cycles in reverse order.
+--
+--      Alt-Ctrl-\ is the default key binding to perform interactive completion
+--      for the word at the cursor, showing possible directory completions.
+--
+-- Customize key bindings:
+--
+--      To bind different keys, add a key bindings for the appropriate commands
+--      to your .inputrc file.  For information on customizing key bindings see
+--      https://chrisant996.github.io/clink/clink.html#customizing-key-bindings
+--
+--      "luafunc:cwdhistory_popup"
+--              Show popup list of recent current working directories.  Press
+--              Enter to `cd` to the selected directory, or press Shift-Enter
+--              or Ctrl-Enter to `pushd` to the selected directory.
+--
+--      "luafunc:cwdhistory_menucomplete"
+--      "luafunc:cwdhistory_menucomplete_backward"
+--              Cycle through directory matches for the word at the cursor.
+--              These behave like the "old-menu-complete" and
+--              "old-menu-complete-backward" commands.
+--
+--      "luafunc:cwdhistory_complete"
+--              Perform completion for directory matches for the word at the
+--              cursor.  Behaves like the "complete" command.
+--
+--      "luafunc:cwdhistory_selectcomplete"
+--              Perform completion by selecting from an interactive list of
+--              directory matches.  Behaves like the "clink-select-complete"
+--              command.
 
 --------------------------------------------------------------------------------
 if not io.sopen then
@@ -215,6 +247,8 @@ local function update_history()
     f:close()
 end
 
+
+
 --------------------------------------------------------------------------------
 function cwdhistory_popup(rl_buffer) -- luacheck: no global
     local items = {}
@@ -259,6 +293,111 @@ function cwdhistory_popup(rl_buffer) -- luacheck: no global
     rl.invokecommand("accept-line")
 end
 
+
+
+--------------------------------------------------------------------------------
+local use_dir_generator
+local dir_generator = clink.generator(-999999)
+
+--------------------------------------------------------------------------------
+local function get_cursor_word(line_state)
+    local info = line_state:getwordinfo(line_state:getwordcount())
+    if not info then
+        return ""
+    end
+
+    local start = info.offset
+    local cursor = line_state:getcursor()
+    if cursor < start then
+        return ""
+    end
+
+    return line_state:getline():sub(start, cursor - 1)
+end
+
+--------------------------------------------------------------------------------
+function dir_generator:generate(line_state, builder)
+    if not use_dir_generator then
+        return
+    end
+
+    local matches = {}
+
+    local word = get_cursor_word(line_state)
+    local drive = path.getdrive(word)
+
+    if line_state:getwordcount() <= 1 then
+        local restrict_drive
+        if not drive and path.getdirectory(word):sub(1, 1) == "\\" then
+            local fullword = os.getfullpathname(word)
+            if fullword and fullword ~= "" then
+                word = fullword
+                drive = path.getdrive(fullword)
+                restrict_drive = true
+            end
+        end
+
+        if word == "" or drive then
+            local color = settings.get("color.doskey")
+            if not color or color == "" then
+                color = rl.getmatchcolor("", "dir") or ""
+            else
+                color = "\x1b[0;"..color.."m"
+            end
+            for i = #cwd_history_list, 1, -1 do
+                local dir = path.join(cwd_history_list[i].dir, "")
+                if restrict_drive then
+                    if path.getdrive(dir) ~= drive then
+                        dir = nil
+                    else
+                        dir = dir:sub(#drive + 1)
+                    end
+                end
+                if dir then
+                    builder:addmatch({ match=dir, display=color..dir, type="word", suppressappend=true })
+                end
+            end
+            builder:setnosort()
+        end
+    end
+
+    for _, m in ipairs(clink.dirmatches(line_state:getendword())) do
+        builder:addmatch(m)
+    end
+
+    return true
+end
+
+--------------------------------------------------------------------------------
+function cwdhistory_menucomplete(rl_buffer)
+    use_dir_generator = true
+    rl.invokecommand("old-menu-complete")
+    use_dir_generator = nil
+end
+
+--------------------------------------------------------------------------------
+function cwdhistory_menucomplete_backward(rl_buffer)
+    use_dir_generator = true
+    rl.invokecommand("old-menu-complete-backward")
+    use_dir_generator = nil
+end
+
+--------------------------------------------------------------------------------
+function cwdhistory_complete(rl_buffer)
+    use_dir_generator = true
+    rl.invokecommand("complete")
+    use_dir_generator = nil
+end
+
+--------------------------------------------------------------------------------
+function cwdhistory_selectcomplete(rl_buffer)
+    use_dir_generator = true
+    rl.invokecommand("clink-select-complete")
+    use_dir_generator = nil
+end
+
+
+
 --------------------------------------------------------------------------------
 clink.onbeginedit(function ()
     update_history()
@@ -269,7 +408,20 @@ if rl.setbinding then
     if not rl.getbinding([["\e[5;2~"]]) then
         rl.setbinding([["\e[5;2~"]], [["luafunc:cwdhistory_popup"]])
     end
+    if not rl.getbinding([["\e\C-\"]]) then
+        rl.setbinding([["\e\C-\"]], [["luafunc:cwdhistory_selectcomplete"]])
+    end
+    if not rl.getbinding([["\C-\"]]) then
+        rl.setbinding([["\C-\"]], [["luafunc:cwdhistory_menucomplete"]])
+    end
+    if not rl.getbinding([["\e[27;6;220~"]]) then
+        rl.setbinding([["\e[27;6;220~"]], [["luafunc:cwdhistory_menucomplete_backward"]])
+    end
     if rl.describemacro then
         rl.describemacro([["luafunc:cwdhistory_popup"]], "Show popup list of recent directories")
+        rl.describemacro([["luafunc:cwdhistory_menucomplete"]], "Replace word with next directory match")
+        rl.describemacro([["luafunc:cwdhistory_menucomplete_backward"]], "Replace word with previous directory match")
+        rl.describemacro([["luafunc:cwdhistory_complete"]], "Complete word as a directory")
+        rl.describemacro([["luafunc:cwdhistory_selectcomplete"]], "Complete word as a directory from an interactive list")
     end
 end
