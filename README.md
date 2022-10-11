@@ -28,6 +28,7 @@ Script Name | Description
 auto_argmatcher.lua | Reads a config file and automatically creates argmatchers (completion generators) for specified programs by parsing their help text output.  Refer to the usage information in the script file for details.
 cwdhistory.lua | Adds cwd history that is saved between sessions.  Use Alt-Ctrl-PgUp to show the cwd history popup list.  Refer to the usage information in the script file for details.
 divider.lua | Automatically prints a divider line before and after running certain commands.  The list of commands is configurable.  Refer to the usage information in the script file for details.
+fuzzy_history.lua | Adds an autosuggest strategy `fuzzy_history` which can ignore path or file extension when providing suggestions from the command history list.  Refer to the usage information in the script file for details.
 fzf.lua | Adds support for using [fzf](https://github.com/junegunn/fzf) with Clink.  Refer to the usage information in the script file for how to activate key bindings.  (This is the script from the [clink-fzf](https://github.com/chrisant996/clink-fzf) repo.)
 i.lua | Adds an `i {dir} {command}` command that changes to _{dir}_, runs _{command}_, and changes back to the original directory.  Refer to the usage information in the script file for details and other features.
 luaexec.lua | Some handy debugging aids to use with Clink Lua scripts.  Refer to the usage information in the script file for details.
