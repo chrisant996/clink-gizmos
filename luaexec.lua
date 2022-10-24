@@ -340,10 +340,12 @@ function lua_generator:generate(line_state, match_builder) -- luacheck: no unuse
         if index == count then
             parent = parent or _G
             parentname = parentname and parentname.."." or ""
-            local prefix = fields[index]:lower()
-            for name,_ in pairs(parent or _G) do
-                if #prefix == 0 or name:sub(1, #prefix):lower() == prefix then
-                    match_builder:addmatch(parentname..name, "word")
+            if type(parent) == "table" then
+                local prefix = fields[index]:lower()
+                for name,_ in pairs(parent or _G) do
+                    if #prefix == 0 or name:sub(1, #prefix):lower() == prefix then
+                        match_builder:addmatch(parentname..name, "word")
+                    end
                 end
             end
             break
