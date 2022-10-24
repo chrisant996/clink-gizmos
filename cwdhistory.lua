@@ -316,12 +316,10 @@ local function get_cursor_word(line_state)
 end
 
 --------------------------------------------------------------------------------
-function dir_generator:generate(line_state, builder)
+function dir_generator:generate(line_state, builder) -- luacheck: no unused
     if not use_dir_generator then
         return
     end
-
-    local matches = {}
 
     local word = get_cursor_word(line_state)
     local drive = path.getdrive(word)
@@ -369,28 +367,32 @@ function dir_generator:generate(line_state, builder)
 end
 
 --------------------------------------------------------------------------------
-function cwdhistory_menucomplete(rl_buffer)
+-- luacheck: globals cwdhistory_menucomplete
+function cwdhistory_menucomplete(rl_buffer) -- luacheck: no unused
     use_dir_generator = true
     rl.invokecommand("old-menu-complete")
     use_dir_generator = nil
 end
 
 --------------------------------------------------------------------------------
-function cwdhistory_menucomplete_backward(rl_buffer)
+-- luacheck: globals cwdhistory_menucomplete_backward
+function cwdhistory_menucomplete_backward(rl_buffer) -- luacheck: no unused
     use_dir_generator = true
     rl.invokecommand("old-menu-complete-backward")
     use_dir_generator = nil
 end
 
 --------------------------------------------------------------------------------
-function cwdhistory_complete(rl_buffer)
+-- luacheck: globals cwdhistory_complete
+function cwdhistory_complete(rl_buffer) -- luacheck: no unused
     use_dir_generator = true
     rl.invokecommand("complete")
     use_dir_generator = nil
 end
 
 --------------------------------------------------------------------------------
-function cwdhistory_selectcomplete(rl_buffer)
+-- luacheck: globals cwdhistory_selectcomplete
+function cwdhistory_selectcomplete(rl_buffer) -- luacheck: no unused
     use_dir_generator = true
     rl.invokecommand("clink-select-complete")
     use_dir_generator = nil
@@ -422,6 +424,6 @@ if rl.setbinding then
         rl.describemacro([["luafunc:cwdhistory_menucomplete"]], "Replace word with next directory match")
         rl.describemacro([["luafunc:cwdhistory_menucomplete_backward"]], "Replace word with previous directory match")
         rl.describemacro([["luafunc:cwdhistory_complete"]], "Complete word as a directory")
-        rl.describemacro([["luafunc:cwdhistory_selectcomplete"]], "Complete word as a directory from an interactive list")
+        rl.describemacro([["luafunc:cwdhistory_selectcomplete"]], "Complete word as a directory from an interactive list") -- luacheck: no max line length
     end
 end

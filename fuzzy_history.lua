@@ -81,7 +81,7 @@ end
 local sug = clink.suggester('fuzzy_history')
 
 --------------------------------------------------------------------------------
-function sug:suggest(line_state, matches)
+function sug:suggest(line_state, matches) -- luacheck: no unused
     -- If empty or only spaces there's nothing to match.
     local line = line_state:getline()
     if not line:match('[^ ]') then
