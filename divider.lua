@@ -58,8 +58,8 @@ settings.add(
 settings.add(
     "color.divider_line_text",
     "",
-    "Color for command divider line text.  If not set, then color.divider_line is\n"..
-    "used for the divider line text.")
+    "Color for command divider line text",
+    "When the color is blank, color.divider_line is used for the divider line text.")
 
 settings.add(
     "color.divider_line_end",
