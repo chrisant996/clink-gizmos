@@ -38,7 +38,7 @@
 --          FZF_CTRL_R_OPTS     = fzf options for fzf_history() function.
 --          FZF_ALT_C_OPTS      = fzf options for fzf_directory() function.
 --          FZF_BINDINGS_OPTS   = fzf options for fzf_bindings() function.
---          FZF_COMPLETE_OPTS   = fzf options for fzf_complete() and fzf_complete_force() functions.
+--          FZF_COMPLETE_OPTS   = fzf options for fzf_complete() and fzf_complete_force() and fzf_selectcomplete() functions.
 --
 --          FZF_CTRL_T_COMMAND  = command to run for collecting files for fzf_file() function.
 --          FZF_ALT_C_COMMAND   = command to run for collecting directories for fzf_directory() function.
@@ -270,7 +270,7 @@ local function fzf_recursive(rl_buffer, line_state, search, quote, dirs_only) --
     rl_buffer:endundogroup()
 end
 
-local function fzf_complete_internal(rl_buffer, line_state, force)
+function fzf_complete_internal(rl_buffer, line_state, force, completion_command)
     local search = is_trigger(line_state)
     if search then
         -- Gather files and/or dirs recursively, and show them in fzf.
@@ -279,11 +279,11 @@ local function fzf_complete_internal(rl_buffer, line_state, force)
         rl_buffer:refreshline()
     elseif not force then
         -- Invoke the normal complete command.
-        rl.invokecommand('complete')
+        rl.invokecommand(completion_command or 'complete')
     else
         -- Intercept matches Use match filtering to let
         fzf_complete_intercept = true
-        rl.invokecommand('complete')
+        rl.invokecommand(completion_command or 'complete')
         if fzf_complete_intercept then
             rl_buffer:ding()
         end
@@ -299,6 +299,12 @@ end
 add_help_desc("luafunc:fzf_complete", "Use fzf for completion if ** is immediately before the cursor position")
 function fzf_complete(rl_buffer, line_state)
     fzf_complete_internal(rl_buffer, line_state, false)
+end
+
+-- luacheck: globals fzf_selectcomplete
+add_help_desc("luafunc:fzf_selectcomplete", "Use fzf for completion after ** otherwise use 'clink-select-complete' command")
+function fzf_selectcomplete(rl_buffer, line_state)
+    fzf_complete_internal(rl_buffer, line_state, false, "clink-select-complete")
 end
 
 -- luacheck: globals fzf_complete_force
