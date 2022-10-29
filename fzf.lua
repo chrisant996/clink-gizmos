@@ -29,7 +29,6 @@
 "\e[27;5;32~": "luafunc:fzf_complete_force" # Ctrl+Space uses fzf to filter match completions (and supports '**' for recursive).
 
 ]]
--- luacheck: pop
 --
 -- Optional:  You can set the following environment variables to customize the
 -- behavior:
@@ -44,6 +43,8 @@
 --          FZF_ALT_C_COMMAND   = command to run for collecting directories for fzf_directory() function.
 --
 --          FZF_COMPLETION_DIR_COMMANDS = commands that should complete only directories, separated by spaces.
+--
+-- luacheck: pop
 
 --------------------------------------------------------------------------------
 -- Compatibility check.
@@ -270,6 +271,7 @@ local function fzf_recursive(rl_buffer, line_state, search, quote, dirs_only) --
     rl_buffer:endundogroup()
 end
 
+-- luacheck: globals fzf_complete_internal
 function fzf_complete_internal(rl_buffer, line_state, force, completion_command)
     local search = is_trigger(line_state)
     if search then
@@ -296,25 +298,29 @@ end
 -- Functions for use with 'luafunc:' key bindings.
 
 -- luacheck: globals fzf_complete
-add_help_desc("luafunc:fzf_complete", "Use fzf for completion if ** is immediately before the cursor position")
+add_help_desc("luafunc:fzf_complete",
+              "Use fzf for completion if ** is immediately before the cursor position")
 function fzf_complete(rl_buffer, line_state)
     fzf_complete_internal(rl_buffer, line_state, false)
 end
 
 -- luacheck: globals fzf_selectcomplete
-add_help_desc("luafunc:fzf_selectcomplete", "Use fzf for completion after ** otherwise use 'clink-select-complete' command")
+add_help_desc("luafunc:fzf_selectcomplete",
+              "Use fzf for completion after ** otherwise use 'clink-select-complete' command")
 function fzf_selectcomplete(rl_buffer, line_state)
     fzf_complete_internal(rl_buffer, line_state, false, "clink-select-complete")
 end
 
 -- luacheck: globals fzf_complete_force
-add_help_desc("luafunc:fzf_complete_force", "Use fzf for completion")
+add_help_desc("luafunc:fzf_complete_force",
+              "Use fzf for completion")
 function fzf_complete_force(rl_buffer, line_state)
     fzf_complete_internal(rl_buffer, line_state, true)
 end
 
 -- luacheck: globals fzf_history
-add_help_desc("luafunc:fzf_history", "List history entries; choose one to insert it")
+add_help_desc("luafunc:fzf_history",
+              "List history entries; choose one to insert it")
 function fzf_history(rl_buffer)
     local clink_command = get_clink()
     if #clink_command == 0 then
@@ -357,7 +363,8 @@ function fzf_history(rl_buffer)
 end
 
 -- luacheck: globals fzf_file
-add_help_desc("luafunc:fzf_file", "List files recursively; choose one or multiple to insert them")
+add_help_desc("luafunc:fzf_file",
+              "List files recursively; choose one or multiple to insert them")
 function fzf_file(rl_buffer, line_state)
     local dir = get_word_at_cursor(line_state)
     local command = get_ctrl_t_command(dir)
@@ -384,7 +391,8 @@ function fzf_file(rl_buffer, line_state)
 end
 
 -- luacheck: globals fzf_directory
-add_help_desc("luafunc:fzf_directory", "List subdirectories; choose one to 'cd /d' to it")
+add_help_desc("luafunc:fzf_directory",
+              "List subdirectories; choose one to 'cd /d' to it")
 function fzf_directory(rl_buffer, line_state)
     local dir = get_word_at_cursor(line_state)
     local command = get_alt_c_command(dir)
@@ -413,7 +421,8 @@ function fzf_directory(rl_buffer, line_state)
 end
 
 -- luacheck: globals fzf_bindings
-add_help_desc("luafunc:fzf_bindings", "List key bindings; choose one to invoke it")
+add_help_desc("luafunc:fzf_bindings",
+              "List key bindings; choose one to invoke it")
 function fzf_bindings(rl_buffer)
     if not rl.getkeybindings then
         rl_buffer:beginoutput()
