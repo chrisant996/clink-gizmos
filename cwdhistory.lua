@@ -271,6 +271,8 @@ function cwdhistory_popup(rl_buffer) -- luacheck: no global
         end
     end
 
+    items.reverse = true
+
     local value, shifted, index = clink.popuplist("Recently Used Directories", items, #cwd_history_list, del_callback) -- luacheck: no unused, no max line length
     if update then
         update_history()
