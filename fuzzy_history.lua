@@ -130,6 +130,9 @@ function sug:suggest(line_state, matches) -- luacheck: no unused
     local ignore_ext = settings.get('fuzzy_history.ignore_ext')
 
     local name, ext = transform_command(command, ignore_path, ignore_ext)
+    if not name or name == '' then
+        return
+    end
 
     local max_items = settings.get('fuzzy_history.max_items')
     local upperbound = rl.gethistorycount()
@@ -172,7 +175,7 @@ function sug:suggest(line_state, matches) -- luacheck: no unused
 
             -- If no match and there isn't a space yet after the command word,
             -- then try for a prefix match.
-            if not found and gap == '' then
+            if not found and gap == '' and hn ~= '' then
                 both = name..ext
                 hb = hn..he
                 local len = string.matchlen(both, hb)
