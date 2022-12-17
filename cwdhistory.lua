@@ -257,6 +257,7 @@ function cwdhistory_popup(rl_buffer) -- luacheck: no global
         if entry.time then
             time_str = os.date("%c", tonumber(entry.time))
         end
+        time_str = time_str:gsub("^(%d+/%d+/%d+) (%d:%d%d:%d%d ..)$", "%1  %2")
         table.insert(items, { value=entry.dir.."    ", description=time_str.."\t" })
     end
 
