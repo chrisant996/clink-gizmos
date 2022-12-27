@@ -78,6 +78,19 @@ local function transform_command(command, ignore_path, ignore_ext)
 end
 
 --------------------------------------------------------------------------------
+local function test_ending_dot_mismatch(needle, haystack)
+    if needle:sub(-1) == "." then
+        haystack = path.getname(haystack)
+        local ml = string.matchlen(needle, haystack)
+        if ml >= 0 and ml ~= #needle then
+            needle = needle:gsub("%.+$", "")
+            haystack = haystack:gsub("%.+$", "")
+            return string.matchlen(needle, haystack) >= 0
+        end
+    end
+end
+
+--------------------------------------------------------------------------------
 local sug = clink.suggester('fuzzy_history')
 
 --------------------------------------------------------------------------------
@@ -130,6 +143,7 @@ function sug:suggest(line_state, matches) -- luacheck: no unused
     local ignore_ext = settings.get('fuzzy_history.ignore_ext')
 
     local name, ext = transform_command(command, ignore_path, ignore_ext)
+    local nameext = path.getname(command)
     if not name or name == '' then
         return
     end
@@ -179,7 +193,7 @@ function sug:suggest(line_state, matches) -- luacheck: no unused
                 both = name..ext
                 hb = hn..he
                 local len = string.matchlen(both, hb)
-                if not endquote and len == #both then
+                if not endquote and len == #both and not test_ending_dot_mismatch(nameext, hc) then
                     found = true
                     partial = #hb - string.matchlen(hb, both)
                 end
