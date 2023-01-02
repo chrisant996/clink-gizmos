@@ -27,6 +27,11 @@
 --              The fuzzy match can ignore the file extension of the command
 --              word ("hello" matches "hello.exe").
 
+if not rl.gethistorycount then
+    print("fuzzy_history.lua requires a newer version of Clink; please upgrade.")
+    return
+end
+
 settings.add('fuzzy_history.max_items', 5000, 'Limit fuzzy_history searches',
     'The fuzzy_history suggestion strategy can search up to this many history\n'..
     'entries.  If not set or set to 0, it is unlimited.')
