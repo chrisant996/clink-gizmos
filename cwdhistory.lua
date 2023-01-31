@@ -252,12 +252,12 @@ end
 --------------------------------------------------------------------------------
 function cwdhistory_popup(rl_buffer) -- luacheck: no global
     local items = {}
+    local time_format = "%Y-%m-%d  %H:%M:%S"
     for _, entry in ipairs(cwd_history_list) do
         local time_str
         if entry.time then
-            time_str = os.date("%c", tonumber(entry.time))
+            time_str = os.date(time_format, tonumber(entry.time))
         end
-        time_str = time_str:gsub("^(%d+/%d+/%d+) (%d:%d%d:%d%d ..)$", "%1  %2")
         table.insert(items, { value=entry.dir.."    ", description=time_str.."\t" })
     end
 
