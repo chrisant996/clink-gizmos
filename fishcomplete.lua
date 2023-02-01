@@ -24,10 +24,14 @@
 --              [directory]  Path to fish completions files.
 --
 --
--- NOTE:  The fishcomplete script does not yet handle the -e, -p, -w, or -x
--- flags for the fish "complete" command.  It attempts to handle simple fish
--- completion scripts, but it will likely malfunction with more sophisticated
--- fish completion scripts.
+-- NOTE:  The fishcomplete script does not yet handle the -e or -w flags for
+-- the fish "complete" command.  It attempts to handle simple fish completion
+-- scripts, but it will likely malfunction with more sophisticated fish
+-- completion scripts.
+
+-- TODO: -e     : `complete -c command -e` erases wrapped "command".
+-- TODO: -e arg : `complete -c command -e cmpltn` erases completion "cmpltn" from "command".
+-- TODO: -w arg : `complete -c hub -w git` makes "hub" inherit the current state of "git" command completions.
 
 if not clink_gizmos_fishcomplete then -- luacheck: no global
     return
@@ -150,7 +154,17 @@ end
 local _command = {
     arg=true,
     func=function (state, arg)
-        if state.command == arg then
+        if state.command ~= arg then
+            state.flags = nil
+        end
+    end
+}
+
+local _path = {
+    -- This approximates the -p flag.
+    arg=true,
+    func=function (state, arg)
+        if state.command ~= path.getbasename(arg) then
             state.flags = nil
         end
     end
@@ -234,11 +248,21 @@ local _require_parameter = {
     end
 }
 
+local _exclusive = {
+    func=function (state, arg) -- luacheck: no unused
+        state.nofiles = true
+        if not state.linked_parser then
+            state.linked_parser = clink.argmatcher()
+        end
+    end
+}
+
 local _nyi = { nyi=true }
 local _nyi_arg = { nyi=true, arg=true }
 
 local options = {
     ['-c'] = _command,              ['--command'] = _command,
+    ['-p'] = _path,                 ['--path'] = _path,
     ['-s'] = _short_option,         ['--short-option'] = _short_option,
     ['-l'] = _long_option,          ['--long-option'] = _long_option,
     ['-o'] = _old_option,           ['--old-option'] = _old_option,
@@ -251,10 +275,10 @@ local options = {
     ['-r'] = _require_parameter,    ['--require-parameter'] = _require_parameter,
     ['-n'] = _condition,            ['--condition'] = _condition,
 
+    ['-x'] = _exclusive,            ['--exclusive'] = _exclusive,
+
     ['-e'] = _nyi,                  ['--erase'] = _nyi,
-    ['-p'] = _nyi_arg,              ['--path'] = _nyi_arg,
     ['-w'] = _nyi_arg,              ['--wraps'] = _nyi_arg,
-    ['-x'] = _nyi,                  ['--exclusive'] = _nyi,
 }
 
 local function parse_fish_completions(name, fish)
@@ -273,6 +297,7 @@ local function parse_fish_completions(name, fish)
         i = i + 1
         if line:match(match_complete) then
             state = {
+                command=name,
                 flags={},
                 matches={},
             }
