@@ -30,6 +30,7 @@ cwdhistory.lua | Adds cwd history that is saved between sessions.  Use Alt-Ctrl-
 divider.lua | Automatically prints a divider line before and after running certain commands.  The list of commands is configurable.  Refer to the usage information in the script file for details.
 fuzzy_history.lua | Adds an autosuggest strategy `fuzzy_history` which can ignore path or file extension when providing suggestions from the command history list.  Refer to the usage information in the script file for details.
 fzf.lua | Adds support for using [fzf](https://github.com/junegunn/fzf) with Clink.  Refer to the usage information in the script file for how to activate key bindings.  (This is the script from the [clink-fzf](https://github.com/chrisant996/clink-fzf) repo.)
+history_labels.lua | Can automatically switch to a different history file based on the current directory.  Refer to the usage information in the script file for how to configure directories and history files.
 i.lua | Adds an `i {dir} {command}` command that changes to _{dir}_, runs _{command}_, and changes back to the original directory.  Refer to the usage information in the script file for details and other features.
 luaexec.lua | Some handy debugging aids to use with Clink Lua scripts.  Refer to the usage information in the script file for details.
 tilde_autoexpand.lua | Automatically expands tildes into the user's home directory (disabled by default; see usage information in the script file for how to enable it).
