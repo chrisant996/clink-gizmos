@@ -434,12 +434,20 @@ end
 
 
 --------------------------------------------------------------------------------
+local initialized
 clink.onbeginedit(function ()
-    -- luacheck: globals history_labels_select_label
-    if type(history_labels_select_label) == "function" then
-        history_labels_select_label()
+    if initialized then
+        return
     end
-    update_history()
+    -- This tries to ensure update_history() runs as the last onbeginedit event
+    -- handler, in case any set CLINK_HISTORY_LABEL (like history_labels.lua
+    -- does).  Adding an event handler from inside an existing event handler
+    -- adds the new handler at the end of the list, so the new handler gets run
+    -- last (it isn't skipped).
+    initialized = true
+    clink.onbeginedit(function ()
+        update_history()
+    end)
 end)
 
 --------------------------------------------------------------------------------

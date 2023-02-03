@@ -53,8 +53,3 @@ local function select_label()
 end
 
 clink.onbeginedit(select_label)
-
-if (clink.version_encoded or 0) < 10040016 then
-    -- luacheck: globals history_labels_select_label
-    history_labels_select_label = select_label
-end
