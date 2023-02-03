@@ -65,6 +65,9 @@
 --      only an escape character when followed by a double quote (\"); any other
 --      backslashes are kept as-is (so in "c:\dir\subdir" the backslashes are
 --      not escapes).
+--
+--      The command can be a base name (e.g. "foo"), or a name (e.g. "foo.exe"),
+--      or a fully qualified path (e.g. "c:\tools\foo.exe").
 
 --------------------------------------------------------------------------------
 if not clink.oncommand or not clink.getargmatcher then
@@ -138,6 +141,7 @@ local function load_config_file(name)
             -- First word is command, second word is flags (can be quoted).
             local words = explode(line)
             if words and words[1] then
+                words[1] = path.normalise(words[1])
                 local c = { command=words[1], flags=words[2], parser=words[3] }
 
                 for i = 3, #words do
@@ -255,9 +259,9 @@ local function oncommand(line_state, info)
         return
     end
 
-    local file = clink.lower(path.getname(info.file))
+    local file = clink.lower(info.file)
     if file and file ~= "" then
-        local entry = _config[file] or _config[path.getbasename(file)]
+        local entry = _config[file] or _config[path.getname(file)] or _config[path.getbasename(file)]
         if entry then
             build_argmatcher(entry)
             return
