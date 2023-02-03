@@ -7,6 +7,9 @@
 -- The "cwdhistory.limit" setting specifies how many recently used current
 -- working directories will be remembered.  The default limit is 100.
 --
+-- The CLINK_HISTORY_LABEL environment variable affects directory history the
+-- same way it affects command history.
+--
 -- History:
 --
 --      Shift-PgUp is the default key binding to show a popup list of recent
@@ -58,6 +61,14 @@ settings.add("cwdhistory.limit", 100, "Limit the cwd history", "At most this man
 --------------------------------------------------------------------------------
 local cwd_history_list = {}
 local deletion_list
+local using_history_file
+
+--------------------------------------------------------------------------------
+local function reset_cache()
+    cwd_history_list = {}
+    deletion_list = nil
+    using_history_file = nil
+end
 
 --------------------------------------------------------------------------------
 local function add_and_update_index(list, entry, index, force)
@@ -89,7 +100,12 @@ local function get_history_filename()
     local profile_dir = os.getenv("=clink.profile")
     if profile_dir and profile_dir ~= "" then
         local filename = path.join(profile_dir, "cwd_history")
-        return filename
+        local label = os.getenv("CLINK_HISTORY_LABEL") or ""
+        label = label:gsub("%p", "")
+        if #label > 0 then
+            label = "-" .. label
+        end
+        return filename .. label
     end
 end
 
@@ -166,9 +182,8 @@ local function merge_nodups(file)
 end
 
 --------------------------------------------------------------------------------
-local function update_history()
+local function update_history_internal(history_filename)
     local f
-    local history_filename = get_history_filename()
     local binmode = io.truncate and "" or "b"
 
     -- Create the history file if it doesn't exist yet.
@@ -245,6 +260,21 @@ local function update_history()
     end
 
     f:close()
+end
+
+--------------------------------------------------------------------------------
+local function update_history()
+    local file = get_history_filename()
+
+    if using_history_file then
+        update_history_internal(using_history_file)
+    end
+
+    if using_history_file ~= file then
+        reset_cache()
+        using_history_file = file
+        update_history_internal(using_history_file)
+    end
 end
 
 
@@ -405,6 +435,10 @@ end
 
 --------------------------------------------------------------------------------
 clink.onbeginedit(function ()
+    -- luacheck: globals history_labels_select_label
+    if type(history_labels_select_label) == "function" then
+        history_labels_select_label()
+    end
     update_history()
 end)
 

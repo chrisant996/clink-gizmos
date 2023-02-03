@@ -11,6 +11,7 @@
 -- then the script clears the CLINK_HISTORY_LABEL environment variable (but only
 -- if the script has previously set it).
 
+-- luacheck: globals history_label_dirs
 history_label_dirs = history_label_dirs or {}
 
 -- Example:
@@ -52,3 +53,8 @@ local function select_label()
 end
 
 clink.onbeginedit(select_label)
+
+if (clink.version_encoded or 0) < 10040016 then
+    -- luacheck: globals history_labels_select_label
+    history_labels_select_label = select_label
+end
