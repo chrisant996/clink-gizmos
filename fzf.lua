@@ -93,6 +93,17 @@ local function add_help_desc(macro, desc)
     end
 end
 
+local function make_query_string(rl_buffer)
+    local s = rl_buffer:getbuffer():gsub('["%%^]', '')
+    if #s > 0 then
+        if s:sub(-1) == '\\' then
+            s = s..'\\'
+        end
+        s = '--query "'..s..'"'
+    end
+    return s
+end
+
 local function get_fzf(env)
     local height = settings.get('fzf.height')
     local command = settings.get('fzf.exe_location')
@@ -132,7 +143,7 @@ local function get_clink()
 end
 
 local function need_quote(word)
-    return word and word:find("[ &()[%]{}^=;!%'+,`~]") and true
+    return word and word:find("[ &()[%]{}^=;!%%'+,`~]") and true
 end
 
 local function maybe_quote(word)
@@ -334,14 +345,11 @@ function fzf_history(rl_buffer)
         history = history..' --diag'
     end
 
-    -- This intentionally does not use '--query' because that isn't safe:
-    -- Depending on what the user has typed so far, passing it as an argument
-    -- may cause the command to interpreted differently than expected.
-    -- E.g. suppose the user typed:     "pgm.exe & rd /s
-    -- Then fzf would be invoked as:    fzf.exe --query""pgm.exe & rd /s"
-    -- And since the & is not inside quotes, the 'rd /s' command gets actually
-    -- run by mistake!
-    local r = io.popen(history..' 2>nul | '..get_fzf('FZF_CTRL_R_OPTS')..' -i --tac')
+    -- This produces a '--query' string by stripping certain problematic
+    -- characters from the input line.  This still does a good job of matching,
+    -- because fzf uses fuzzy matching.
+    local qs = make_query_string(rl_buffer)
+    local r = io.popen('2>nul '..history..' | '..get_fzf('FZF_CTRL_R_OPTS')..' -i --tac '..qs)
     if not r then
         rl_buffer:ding()
         return
@@ -381,10 +389,7 @@ function fzf_file(rl_buffer, line_state)
     r:close()
 
     if #str > 0 then
-        if str:find("[ &()[%]{}^=;!%%'+,`~]") then
-            str = '"'..str..'"'
-        end
-        rl_buffer:insert(str)
+        rl_buffer:insert(maybe_quote(str))
     end
 
     rl_buffer:refreshline()
