@@ -96,7 +96,7 @@ if clink.parseline then
     end
 
     tilde_autoexpand = function (line)
-        if settings.get("tilde.autoexpand") then
+        if settings.get("tilde.autoexpand") and line:find("~") then
             local out = ""
             local commands = clink.parseline(line)
             local next = 1
@@ -104,7 +104,8 @@ if clink.parseline then
                 local ls = c.line_state
                 for i = 1, ls:getwordcount() do
                     local info = ls:getwordinfo(i)
-                    local word, expanded = rl.expandtilde(ls:getword(i))
+                    local word = line:sub(info.offset, info.offset + info.length - 1)
+                    word, expanded = rl.expandtilde(word)
                     if expanded and not info.quoted then
                         word = maybe_quote(word)
                     end
@@ -120,7 +121,7 @@ if clink.parseline then
 else
 
     tilde_autoexpand = function (line)
-        if settings.get("tilde.autoexpand") then
+        if settings.get("tilde.autoexpand") and line:find("~") then
             local expanded = rl.expandtilde(line)
             return apply_escape(expanded)
         end
