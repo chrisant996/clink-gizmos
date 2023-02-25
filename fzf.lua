@@ -94,43 +94,84 @@ local function add_help_desc(macro, desc)
 end
 
 local function make_query_string(rl_buffer)
-    local s = rl_buffer:getbuffer():gsub('["%%^]', '')
+    local s = rl_buffer:getbuffer()
+
+    -- Must strip % because there's no way to escape % when the command line
+    -- gets processed first by cmd, as it does when using io.popen() and etc.
+    -- This is the only thing that gets dropped; everything else gets escaped.
+    s = s:gsub('%%', '')
+
     if #s > 0 then
-        if s:sub(-1) == '\\' then
-            s = s..'\\'
+        -- Must double ^ so it roundtrips correctly.
+        s = s:gsub('%^', '^^')
+
+        -- The 2N rule for escaping quotes and backslashes:
+        --
+        -- - 2n backslashes followed by a quotation mark produce n backslashes
+        --   followed by begin/end quote. This does not become part of the
+        --   parsed argument, but toggles the "in quotes" mode.
+        -- - (2n) + 1 backslashes followed by a quotation mark again produce n
+        --   backslashes followed by a quotation mark literal ("). This does not
+        --   toggle the "in quotes" mode.
+        -- - n backslashes not followed by a quotation mark simply produce n
+        --   backslashes.
+        --
+        -- https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-commandlinetoargvw
+        local tmp = ''
+        local i = 1
+        while i <= #s do
+            local pre,suf = s:match('^(.-)(\\*)"', i)
+            if pre and suf then
+                tmp = tmp..pre..suf..suf..'\\"'
+                i = i + #pre + #suf + 1
+            else
+                tmp = tmp..s:sub(i)
+                break
+            end
         end
+        s = tmp
+
+        -- Must double any trailing \ characters and add another, since we're
+        -- about to append a trailing double quote (same 2N rule as above).
+        local pre,suf = s:match('^(.-)(\\*)$')
+        if pre and suf then
+            s = pre..suf..suf
+        end
+
         s = '--query "'..s..'"'
     end
+
     return s
 end
 
 local function get_fzf(env)
-    local height = settings.get('fzf.height')
     local command = settings.get('fzf.exe_location')
-    if os.expandenv and command then
-        -- Expand so that os.getshortpathname() can work even when envvars are
-        -- present.
-        command = os.expandenv(command)
-    end
     if not command or command == '' then
         command = 'fzf.exe'
+    end
+    command = command:gsub('"', '')
+
+    -- It's important to invoke an .exe file, otherwise quoting for --query can
+    -- malfunction and potentially fall into a code injection situation.
+    if path.getname(command) ~= command then
+        local command_path = path.toparent(command)
+        command = path.join(command_path, path.getbasename(command)..".exe")
     else
-        -- CMD.exe cannot use pipe redirection with a quoted program name, so
-        -- try to use a short name.
-        local short = os.getshortpathname(command)
-        if short then
-            command = short
-        end
+        command = path.getbasename(command)..".exe"
     end
-    if command and command ~= '' and height and height ~= '' then
-        command = command..' --height '..height
+
+    local height = settings.get('fzf.height')
+    if height and height ~= '' then
+        command = '"'..command..'" --height '..height
     end
+
     if env then
         local options = os.getenv(env)
         if options then
             command = command..' '..options
         end
     end
+
     return command
 end
 
@@ -247,7 +288,7 @@ local function fzf_recursive(rl_buffer, line_state, search, quote, dirs_only) --
     local first, last, has_quote, delimit = get_word_insert_bounds(line_state) -- luacheck: no unused
     quote = has_quote or '"'
 
-    local r = io.popen(command..' 2>nul | '..get_fzf('FZF_COMPLETE_OPTS')..' -q "'..word..'"')
+    local r = io.popen('2>nul '..command..' | '..get_fzf('FZF_COMPLETE_OPTS')..' -q "'..word..'"')
     if not r then
         rl_buffer:ding()
         return
