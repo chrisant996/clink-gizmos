@@ -26,6 +26,7 @@ Each script file contains usage information in comments at the top of the script
 Script Name | Description
 -|-
 auto_argmatcher.lua | Reads a config file and automatically creates argmatchers (completion generators) for specified programs by parsing their help text output.  Refer to the usage information in the script file for details.
+autopull.lua | Periodically runs `git pull` in a configurable list of directories.  Refer to the usage information in the script file for details.
 cwdhistory.lua | Adds cwd history that is saved between sessions.  Use Alt-Ctrl-PgUp to show the cwd history popup list.  Refer to the usage information in the script file for details.
 divider.lua | Automatically prints a divider line before and after running certain commands.  The list of commands is configurable.  Refer to the usage information in the script file for details.
 fuzzy_history.lua | Adds an autosuggest strategy `fuzzy_history` which can ignore path or file extension when providing suggestions from the command history list.  Refer to the usage information in the script file for details.
