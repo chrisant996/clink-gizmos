@@ -100,6 +100,7 @@ if clink.parseline then
             local out = ""
             local commands = clink.parseline(line)
             local next = 1
+            local expanded
             for _, c in ipairs(commands) do
                 local ls = c.line_state
                 for i = 1, ls:getwordcount() do
