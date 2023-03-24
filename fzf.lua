@@ -273,7 +273,7 @@ local function is_dir_command(line_state)
     end
 end
 
-local function fzf_recursive(rl_buffer, line_state, search, quote, dirs_only) -- luacheck: no unused
+local function fzf_recursive(rl_buffer, line_state, search, dirs_only) -- luacheck: no unused
     local dir, word
     dir = path.getdirectory(search)
     word = path.getname(search)
@@ -286,7 +286,7 @@ local function fzf_recursive(rl_buffer, line_state, search, quote, dirs_only) --
     end
 
     local first, last, has_quote, delimit = get_word_insert_bounds(line_state) -- luacheck: no unused
-    quote = has_quote or '"'
+    local quote = has_quote or '"'
 
     local r = io.popen('2>nul '..command..' | '..get_fzf('FZF_COMPLETE_OPTS')..' -q "'..word..'"')
     if not r then
