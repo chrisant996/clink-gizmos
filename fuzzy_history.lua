@@ -213,11 +213,15 @@ function sug:suggest(line_state, matches) -- luacheck: no unused
                 if suggestion ~= '' then
                     if gap == '' then
                         suggestion = ' '..suggestion
+                        if partial > 0 then
+                            hb = hb:sub(0 - partial):gsub('"+$', '')
+                            endquote = false
+                        end
                         if info.quoted and not endquote then
                             suggestion = '"'..suggestion
                         end
                         if partial > 0 then
-                            suggestion = hb:sub(0 - partial)..suggestion
+                            suggestion = hb..suggestion
                         end
                     end
                     suggestion = line:sub(1, line_state:getcursor() - 1)..suggestion
