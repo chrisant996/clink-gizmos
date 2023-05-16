@@ -35,6 +35,7 @@ history_labels.lua | Can automatically switch to a different history file based 
 i.lua | Adds an `i {dir} {command}` command that changes to _{dir}_, runs _{command}_, and changes back to the original directory.  Refer to the usage information in the script file for details and other features.
 luaexec.lua | Some handy debugging aids to use with Clink Lua scripts.  Refer to the usage information in the script file for details.
 tilde_autoexpand.lua | Automatically expands tildes into the user's home directory (disabled by default; see usage information in the script file for how to enable it).
+vscode_shell_integration.lua | Automatically enables shell integration for VSCode embedded terminal windows.
 z_dir_popup.lua | If you use [z.lua](https://github.com/skywind3000/z.lua) then this provides a popup listing of directories from z.  See usage information in the script file for details.
 
 # Rough Prototype Features
