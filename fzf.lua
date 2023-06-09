@@ -707,11 +707,13 @@ local algos = addexarg(clink.argmatcher(), {
     { 'v1',             'Optimal scoring algorithm (quality)' },
     { 'v2',             'Faster but not guaranteed to find the optimal result (performance)' },
 })
+local scheme = clink.argmatcher():addarg({'default', 'path', 'history'})
 local nth = clink.argmatcher():addarg({fromhistory=true, loopchars=','})
 local delim = clink.argmatcher():addarg({fromhistory=true})
 local criteria = clink.argmatcher():addarg({
     loopchars=',',
     { 'length',         'Prefers line with shorter length' },
+    { 'chunk',          'Prefers line with shorter matched chunk' },
     { 'begin',          'Prefers line with matched substring closer to the beginning' },
     { 'end',            'Prefers line with matched substring closer to the end' },
     { 'index',          'Prefers line that appeared earlier in the input stream' },
@@ -733,6 +735,8 @@ local borderstyle = clink.argmatcher():addarg({
     nosort=true,
     'rounded',
     'sharp',
+    'bold',
+    'double',
     'horizontal',
     'vertical',
     'top',
@@ -741,6 +745,8 @@ local borderstyle = clink.argmatcher():addarg({
     'right',
     'none',
 })
+local borderlabel = clink.argmatcher():addarg({fromhistory=true})
+local borderlabelpos = clink.argmatcher():addarg({fromhistory=true})
 local margin = clink.argmatcher():addarg({fromhistory=true, loopchars=',', '0', '1', '2'})
 local padding = clink.argmatcher():addarg({fromhistory=true, loopchars=',', '0', '1', '2'})
 local infostyle = addexarg(clink.argmatcher(), {
@@ -777,9 +783,13 @@ local previewopt = clink.argmatcher():addarg({
     '~HEADER_LINES',
     'default',
 })
+local previewlabel = clink.argmatcher():addarg({fromhistory=true})
+local previewlabelpos = clink.argmatcher():addarg({fromhistory=true})
 local query = clink.argmatcher():addarg({fromhistory=true})
 local filter = clink.argmatcher():addarg({fromhistory=true})
 local expect = clink.argmatcher():addarg({fromhistory=true, loopchars=','})
+local separatorstr = clink.argmatcher():addarg({fromhistory=true})
+local scrollbarchars = clink.argmatcher():addarg({fromhistory=true})
 
 addexflags(clink.argmatcher('fzf'), {
     opteq=true,
@@ -790,19 +800,21 @@ addexflags(clink.argmatcher('fzf'), {
     { '--no-extended',                  'Disable extended-search mode' },
     { '-e',                             'Enable Exact-match' },
     { '--exact',                        'Enable Exact-match' },
-    { '--algo='..algos, 'TYPE',         'Fuzzy matching algorithm' },
     { '-i',                             'Case-insensitive match (default: smart-case match; +i for case-sensitive match)' },
     { '+i',                             'Case-sensitive match' },
     { '--literal',                      'Do not normalize latin script letters before matching' },
+    { '--scheme='..scheme, 'SCHEME',    'Scoring scheme' },
+    { '--algo='..algos, 'TYPE',         'Fuzzy matching algorithm' },
     { '-n'..nth, ' N[,..]',             'Comma-separated list of field index expressions for limiting search scope (non-zero integer or range expression "1..4")' },
     { '--nth='..nth, 'N[,..]',          'Comma-separated list of field index expressions for limiting search scope (non-zero integer or range expression "1..4")' },
     { '--with-nth='..nth, 'N[,..]',     'Transform the presentation of each line using field index expressions' },
     { '-d'..delim, ' STR',              'Field delimiter regex (default: AWK-style)' },
     { '--delimiter='..delim, 'STR',     'Field delimiter regex (default: AWK-style)' },
+    { '--disabled',                     'Do not perform search (simple selector interface)' },
     { '+s',                             'Do not sort the result' },
     { '--no-sort',                      'Do not sort the result' },
+    { '--track',                        'Track the current selection when the result is updated' },
     { '--tac',                          'Reverse the order of the input' },
-    { '--disabled',                     'Do not perform search' },
     { '--tiebreak='..criteria, 'CRI[,..]', 'Comma-separated list of sort criteria to apply when the scores are tied (default: length)' },
 
     -- Interface options
@@ -826,10 +838,18 @@ addexflags(clink.argmatcher('fzf'), {
     { '--reverse',                      'A synonym for --layout=reverse' },
     { '--border',                       'Draw border around the finder (default: rounded)' },
     { '--border='..borderstyle, 'STYLE', 'Draw border around the finder (default: rounded)', opteq=false },
+    { '--border-label='..borderlabel, 'LABEL', 'Label to print on the border' },
+    { '--border-label-pos='..borderlabelpos, 'N[:top|bottom]', 'Position of border label' },
+    { '--no-unicode',                   'Use ASCII characters instead of Unicode drawing characters' },
     { '--margin='..margin, 'MARGIN',    'Screen margin (TRBL | TB,RL | T,RL,B | T,R,B,L)' },
     { '--padding='..padding, 'PADDING', 'Padding inside border (TRBL | TB,RL | T,RL,B | T,R,B,L)' },
     { '--info='..infostyle, 'STYLE',    'Finder info style' },
     { '--no-info',                      'Hide the finder info (synonym for --info=hidden)' },
+    { '--separator='..separatorstr, 'STR', 'Hide info line separator' },
+    { '--no-separator',                 'Hide info line separator' },
+    { '--scrollbar',                    'Show scrollbar' },
+    { '--scrollbar='..scrollbarchars, 'C1[C2]', 'Scrollbar character for main [and preview] window', opteq=false },
+    { '--no-scrollbar',                 'Hide scrollbar' },
     { '--prompt='..prompt, 'STR',       "Input prompt (default: '> ')" },
     { '--pointer='..pointer, 'STR',     "Pointer to the current line (default: '>')" },
     { '--marker='..marker, 'STR',       "Multi-select marker (default: '>')" },
@@ -841,9 +861,8 @@ addexflags(clink.argmatcher('fzf'), {
     -- Display options
     { '--ansi',                         'Enable processing of ANSI color codes' },
     { '--tabstop='..tabstop, 'SPACES',  'Number of spaces for a tab character (default: 8)' },
-    { '--color='..colspec, 'COLSPEC',   'Base scheme (dark|light|16|bw) and/or custom colors' },
+    { '--color='..colspec, 'COLSPEC',   'Base scheme and/or custom colors' },
     { '--no-bold',                      'Do not use bold text' },
-    { '--no-unicode',                   'Use ASCII characters instead of Unicode box drawing characters to draw border' },
     { '--black',                        'Use black background' },
 
     -- History options
@@ -852,6 +871,8 @@ addexflags(clink.argmatcher('fzf'), {
 
     -- Preview options
     { '--preview='..previewcommand, 'COMMAND', 'Command to preview highlighted line ({})' },
+    { '--preview-label='..previewlabel, 'LABEL', 'Label to print on preview window border' },
+    { '--preview-label-pos='..previewlabelpos, 'N[:top|bottom]', 'Position of label on preview window border' },
     { '--preview-window='..previewopt, 'OPTS', 'Preview window layout (default: right,50%)' },
 
     -- Scripting options
@@ -870,5 +891,7 @@ addexflags(clink.argmatcher('fzf'), {
     { '--print0',                       'Print output delimited by ASCII NUL characters' },
     { '--sync',                         'Synchronous search for multi-staged filtering' },
     { '--version',                      'Display version information and exit' },
+    { '-h',                             'Display help text' },
+    { '--help',                         'Display help text' },
 })
 
