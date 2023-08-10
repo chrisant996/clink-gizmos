@@ -291,6 +291,15 @@ function cwdhistory_popup(rl_buffer) -- luacheck: no global
         table.insert(items, { value=entry.dir.."  ", description=time_str.."\t" })
     end
 
+    -- If the most recent is the same as the current directory, then remove it;
+    -- there's little point in switching to the same directory.
+    if #items > 0 then
+        local top = items[#items].value:gsub(" +$", "")
+        if string.equalsi(os.getcwd(), top) then
+            table.remove(items, #items)
+        end
+    end
+
     local update
     local function del_callback(index)
         if cwd_history_list[index] then
@@ -304,7 +313,7 @@ function cwdhistory_popup(rl_buffer) -- luacheck: no global
 
     items.reverse = true
 
-    local value, shifted, index = clink.popuplist("Recently Used Directories", items, #cwd_history_list, del_callback) -- luacheck: no unused, no max line length
+    local value, shifted, index = clink.popuplist("Recently Used Directories", items, #items, del_callback) -- luacheck: no unused, no max line length
     if update then
         update_history()
     end
