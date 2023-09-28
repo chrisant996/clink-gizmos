@@ -20,7 +20,7 @@ history_label_dirs = history_label_dirs or {}
 --          { "c:/repos/workcode", "Work Repo" },
 --      }
 
-if not unicode.normalize then
+if not unicode or not unicode.normalize then
     log.info("history_labels.lua requires a newer version of Clink; please upgrade.")
     return
 end
