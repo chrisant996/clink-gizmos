@@ -1,6 +1,16 @@
 settings.add('tips.enable', true, 'Show a tip when Clink starts',
     'When true, a random tip is printed when Clink starts.')
 
+local callbacks = {}
+
+--------------------------------------------------------------------------------
+function register_show_tips(func)
+    if not callbacks[func] then
+        table.insert(callbacks, func)
+        callbacks[func] = true
+    end
+end
+
 --------------------------------------------------------------------------------
 local function rl_testvar(name, test)
     if rl.getvariable then
@@ -71,17 +81,26 @@ local function add_seen_tip(id)
 end
 
 --------------------------------------------------------------------------------
+local function load_external_tips()
+    local tips = {}
+end
+
+--------------------------------------------------------------------------------
 -- luacheck: no max line length
-local function collect_tips(seen)
+local function collect_tips(external, seen)
     local tips = {early={}}
     local any_seen
 
     local function insert_tip(id, condition, tip)
-        if not seen[id] then
+        if seen[id] then
+            any_seen = true
+        else
             if condition then
                 tips[id] = tip
                 table.insert(tips, id)
-                table.insert(tips.early, id)
+                if tip.early then
+                    table.insert(tips.early, id)
+                end
             else
                 add_seen_tip(id)
             end
@@ -164,6 +183,15 @@ local function collect_tips(seen)
                    {early=true, text="Completion colors can be customized by setting the LS_COLORS environment variable.\nSee https://chrisant996.github.io/clink/clink.html#completioncolors for more info."})
     end
 
+    -- Allow external tips.
+    if external then
+        for _, t in ipairs(external) do
+            if t.id and t.text then
+                insert_tip(t.id, (t.condition == nil or t.condition), {early=t.early, text=t.text})
+            end
+        end
+    end
+
     return tips, any_seen
 end
 
@@ -228,11 +256,12 @@ local function show_tip()
 
     -- Collect available tips that haven't been seen yet.
     local seen = load_seen_tips()
-    local tips, any_seen = collect_tips(seen)
+    local external = load_external_tips()
+    local tips, any_seen = collect_tips(external, seen)
     if not tips[1] and any_seen then
         -- Reset the seen file if all tips have been seen.
         clear_seen_file()
-        tips = collect_tips({})
+        tips = collect_tips(external, {})
     end
     if not tips[1] then
         return
@@ -283,6 +312,12 @@ local function show_tip()
 end
 
 --------------------------------------------------------------------------------
+local function clear_callbacks()
+    callbacks = nil -- Allow garbage collection of anything that was registered.
+end
+
+--------------------------------------------------------------------------------
 if rl and rl.getkeybindings and clink.oninject then
     clink.oninject(show_tip)
+    clink.onbeginedit(clear_callbacks)
 end
