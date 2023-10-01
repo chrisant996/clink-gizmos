@@ -1,15 +1,11 @@
+--------------------------------------------------------------------------------
 settings.add('tips.enable', true, 'Show a tip when Clink starts',
     'When true, a random tip is printed when Clink starts.')
 
-local callbacks = {}
-
 --------------------------------------------------------------------------------
-function register_show_tips(func)
-    if not callbacks[func] then
-        table.insert(callbacks, func)
-        callbacks[func] = true
-    end
-end
+-- A script can register to add its own tips.
+-- See modules/external_tips.lua for details.
+local external_tips = require("external_tips")
 
 --------------------------------------------------------------------------------
 local function rl_testvar(name, test)
@@ -78,11 +74,6 @@ local function add_seen_tip(id)
         f:write(id.."\n")
         f:close()
     end
-end
-
---------------------------------------------------------------------------------
-local function load_external_tips()
-    local tips = {}
 end
 
 --------------------------------------------------------------------------------
@@ -187,7 +178,11 @@ local function collect_tips(external, seen)
     if external then
         for _, t in ipairs(external) do
             if t.id and t.text then
-                insert_tip(t.id, (t.condition == nil or t.condition), {early=t.early, text=t.text})
+                insert_tip(t.id, (t.condition == nil or t.condition), {
+                    early = t.early,
+                    text = t.text,
+                    category = t.category,
+                })
             end
         end
     end
@@ -256,7 +251,7 @@ local function show_tip()
 
     -- Collect available tips that haven't been seen yet.
     local seen = load_seen_tips()
-    local external = load_external_tips()
+    local external = external_tips.collect()
     local tips, any_seen = collect_tips(external, seen)
     if not tips[1] and any_seen then
         -- Reset the seen file if all tips have been seen.
@@ -297,8 +292,10 @@ local function show_tip()
         clink.print(cyan.."Key binding tip:"..norm)
         print_with_wrap(string.format("%s : %s -- %s", embolden(key), embolden(command), desc))
     elseif tip.text then
+        local cat = tip.category or "configuration"
+        cat = cat:sub(1, 1):upper()..cat:sub(2)
         clink.print("")
-        clink.print(cyan.."Configuration tip:"..norm)
+        clink.print(cyan..cat.." tip:"..norm)
         print_with_wrap(tip.text)
     else
         error("Unexpected tip type for id '"..id.."'.")
@@ -313,7 +310,8 @@ end
 
 --------------------------------------------------------------------------------
 local function clear_callbacks()
-    callbacks = nil -- Allow garbage collection of anything that was registered.
+    -- Allow garbage collection of anything that was registered.
+    external_tips.clear()
 end
 
 --------------------------------------------------------------------------------
