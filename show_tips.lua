@@ -302,7 +302,8 @@ local function show_tip()
     end
 
     clink.print("")
-    clink.print(gray.."You can turn off these tips by running 'clink set show_tips.enable false'."..norm)
+    clink.print(gray.."You can turn off these tips by running 'clink set tips.enable false'."..norm)
+    clink.print("")
 
     -- Mark that the tip has been seen.
     add_seen_tip(id)
