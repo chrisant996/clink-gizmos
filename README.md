@@ -2,6 +2,8 @@
 
 This is a collection of Lua scripts for use with [Clink](https://github.com/chrisant996/clink).
 
+> Note: This includes [clink-fzf](https://github.com/chrisant996/clink-fzf), so use either clink-gizmos or clink-fzf, but not both (using both results in duplication and warnings).  Clink-gizmos contains a collection of scripts, and clink-fzf contains a single script.
+
 ## How To Install
 
 The easiest way to install it for use with your Clink is:
