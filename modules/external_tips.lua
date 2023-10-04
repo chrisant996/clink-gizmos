@@ -62,8 +62,14 @@ local function collect_external_tips()
 end
 
 --------------------------------------------------------------------------------
-local function clear_external_tips()
-    callbacks = nil -- Allow garbage collection of anything that was registered.
+local function clear_callbacks()
+    -- Allow garbage collection of anything that was registered.
+    callbacks = nil
+end
+
+--------------------------------------------------------------------------------
+if clink.onbeginedit then
+    clink.onbeginedit(clear_callbacks)
 end
 
 --------------------------------------------------------------------------------

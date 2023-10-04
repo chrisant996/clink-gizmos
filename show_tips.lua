@@ -2,6 +2,10 @@
 settings.add('tips.enable', true, 'Show a tip when Clink starts',
     'When true, a random tip is printed when Clink starts.')
 
+if not settings.get('tips.enable') then
+    return
+end
+
 --------------------------------------------------------------------------------
 -- A script can register to add its own tips.
 -- See modules/external_tips.lua for details.
@@ -310,13 +314,6 @@ local function show_tip()
 end
 
 --------------------------------------------------------------------------------
-local function clear_callbacks()
-    -- Allow garbage collection of anything that was registered.
-    external_tips.clear()
-end
-
---------------------------------------------------------------------------------
 if rl and rl.getkeybindings and clink.oninject then
     clink.oninject(show_tip)
-    clink.onbeginedit(clear_callbacks)
 end
