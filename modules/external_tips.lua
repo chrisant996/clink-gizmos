@@ -22,6 +22,41 @@
 --      category    = A category name.  If none is given, "Custom" is assumed.
 --      early       = When true, the tip is prioritized to be shown earlier than
 --                    most other tips.
+--------------------------------------------------------------------------------
+-- A script can also replace the tip printer:
+--
+--      local external_tips = require("external_tips")
+--
+--      local use_custom_printer = true
+--
+--      local function print_tip(tip, print_with_wrap, off_message, default_print_tip)
+--          local blue = "\x1b[34m"
+--          local norm = "\x1b[m"
+--          local divider = blue..string.rep("-", console.getwidth() - 1)..norm
+--
+--          print("")
+--          print(divider)
+--
+--          if use_custom_printer then
+--              print(tip.category.." tip:")
+--              if tip.key then
+--                  print_with_wrap(string.format("%s : %s -- %s", tip.key, tip.binding, tip.desc))
+--              elseif tip.text then
+--                  print_with_wrap(tip.text)
+--              else
+--                  error("Unexpected tip type for id '"..tip.id.."'.")
+--              end
+--              print("")
+--              print(off_message)
+--          else
+--              default_print_tip(tip, print_with_wrap, off_message)
+--          end
+--
+--          print(divider)
+--          print("")
+--      end
+--
+--      external_tips.print = print_tip
 
 --------------------------------------------------------------------------------
 local callbacks = {}
@@ -74,7 +109,11 @@ end
 
 --------------------------------------------------------------------------------
 return {
+    -- For public use.
     register = register_show_tips,
+    print = nil,
+
+    -- For internal use.
     collect = collect_external_tips,
     clear = clear_external_tips,
 }

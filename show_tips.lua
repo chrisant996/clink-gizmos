@@ -247,12 +247,41 @@ local function print_with_wrap(text)
     end
 end
 
-local function show_tip()
+local function default_print_tip(tip, wrap, off)
     local bold = "\x1b[1m"
     local cyan = "\x1b[36m"
     local gray = "\x1b[30;1m"
     local norm = "\x1b[m"
 
+    local function embolden(text)
+        return bold..text..norm
+    end
+
+    local heading = cyan..tip.category.." tip:"..norm
+    local message
+    if tip.key then
+        message = string.format("%s : %s -- %s", embolden(tip.key), embolden(tip.binding), tip.desc)
+    elseif tip.text then
+        message = tip.text
+    else
+        error("Unexpected tip type for id '"..id.."'.")
+    end
+    off = gray..off..norm
+
+    -- Show the selected tip.
+    clink.print(heading)
+    wrap(message)
+    clink.print("")
+    clink.print(off)
+end
+
+local function print_tip(tip, wrap_func, off_message, default_func)
+    clink.print("")
+    default_func(tip, wrap_func, off_message)
+    clink.print("")
+end
+
+local function show_tip()
     -- Collect available tips that haven't been seen yet.
     local seen = load_seen_tips()
     local external = external_tips.collect()
@@ -282,32 +311,26 @@ local function show_tip()
         return
     end
 
-    -- Local helper function.
-    local function embolden(text)
-        return bold..text..norm
+    -- Prepare the selected tip.
+    local out = {}
+    for k, v in pairs(tip) do
+        out[k] = v
     end
-
-    -- Show the selected tip.
     if tip.key then
-        local key = tip.key:gsub(" +$", "")
-        local command = tip.binding
-        local desc = tip.desc:gsub("([^.])$", "%1.")
-        clink.print("")
-        clink.print(cyan.."Key binding tip:"..norm)
-        print_with_wrap(string.format("%s : %s -- %s", embolden(key), embolden(command), desc))
+        out.key = tip.key:gsub(" +$", "")
+        out.desc = tip.desc:gsub("([^.])$", "%1.")
+        out.category = "Key binding"
     elseif tip.text then
         local cat = tip.category or "configuration"
-        cat = cat:sub(1, 1):upper()..cat:sub(2)
-        clink.print("")
-        clink.print(cyan..cat.." tip:"..norm)
-        print_with_wrap(tip.text)
+        out.category = cat:sub(1, 1):upper()..cat:sub(2)
     else
         error("Unexpected tip type for id '"..id.."'.")
     end
 
-    clink.print("")
-    clink.print(gray.."You can turn off these tips by running 'clink set tips.enable false'."..norm)
-    clink.print("")
+    -- Show the selected tip.
+    local print_func = external_tips.print or print_tip
+    local off = "You can turn off these tips by running 'clink set tips.enable false'."
+    print_func(out, print_with_wrap, off, default_print_tip)
 
     -- Mark that the tip has been seen.
     add_seen_tip(id)
