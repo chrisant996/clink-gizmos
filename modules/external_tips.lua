@@ -115,5 +115,4 @@ return {
 
     -- For internal use.
     collect = collect_external_tips,
-    clear = clear_external_tips,
 }

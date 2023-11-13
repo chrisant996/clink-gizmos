@@ -91,6 +91,7 @@ local function collect_tips(external, seen)
             any_seen = true
         else
             if condition then
+                tip.id = id
                 tips[id] = tip
                 table.insert(tips, id)
                 if tip.early then
@@ -264,7 +265,7 @@ local function default_print_tip(tip, wrap, off)
     elseif tip.text then
         message = tip.text
     else
-        error("Unexpected tip type for id '"..id.."'.")
+        error("Unexpected tip type for id '"..(tip.id or "<unknown>").."'.")
     end
     off = gray..off..norm
 
