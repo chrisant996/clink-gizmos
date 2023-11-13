@@ -569,7 +569,7 @@ local meta = getmetatable(tmp)
 local addexarg
 local addexflags
 
-if true then
+do
     local link = "link"..tmp
     local meta_link = getmetatable(link)
 
@@ -673,7 +673,7 @@ if true then
         return list, descriptions, hide
     end
 
-    if true then
+    do
         addexflags = function(parser, tbl)
             local flags, descriptions, hide = build_lists(tbl)
             parser:addflags(flags)
@@ -686,7 +686,8 @@ if true then
             return parser
         end
     end
-    if true then
+
+    do
         addexarg = function(parser, tbl)
             local args, descriptions = build_lists(tbl)
             parser:addarg(args)
