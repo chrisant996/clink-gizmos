@@ -443,6 +443,14 @@ end
 
 
 --------------------------------------------------------------------------------
+function cwdhistory_remove_dir(dir) -- luacheck: no global
+    deletion_list = deletion_list or {}
+    deletion_list[clink.lower(dir)] = true
+end
+
+
+
+--------------------------------------------------------------------------------
 local initialized
 clink.onbeginedit(function ()
     if initialized then
