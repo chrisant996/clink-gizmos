@@ -2,10 +2,7 @@
 -- This lets you enter "rem lua: some_lua_code" and execute it as Lua code
 -- within Clink by pressing Enter.
 --
--- This also adds completion for Lua variables, and provides a `dumpvar()`
--- function to dump a variable.
---
---  dumpvar(var, depth) => Dumps var, recursing into tables to depth levels.
+-- This also adds completion for Lua variables.
 --
 -- The following keys are automatically bound when using Clink v1.2.46 or
 -- newer.  But for older versions of Clink the following key bindings must be
@@ -61,6 +58,13 @@ local lua_prefix = "rem lua: "
 local lua_prefix_match = "^ *rem +lua: *"
 
 --------------------------------------------------------------------------------
+local dv = require("dumpvar")
+dv.init = function()
+    dv.show_type = settings.get("lua.show_match_type")
+    dv.type_colors = settings.get("lua.type_colors")
+end
+
+--------------------------------------------------------------------------------
 -- Expand the Lua type colors setting into a table for internal use.
 
 local function get_lua_type_colors()
@@ -71,116 +75,6 @@ local function get_lua_type_colors()
         out[c[1]] = "\x1b[;"..c[2].."m"
     end
     return out
-end
-
---------------------------------------------------------------------------------
--- Get a variable's content as a string.
-
--- luacheck: globals getvar
-function getvar(name)
-    if name == nil or name == "" then return nil end
-
-    local value = _G
-    local names = name:explode(".")
-
-    for _,n in ipairs(names) do
-        if value[n] == nil then return nil end
-
-        value = value[n]
-    end
-
-    if type(value) == "string" then
-        return string.format("%q", value)
-    elseif type(value) == "boolean" then
-        return value and "true" or "false"
-    elseif type(value) == "number" then
-        return value
-    end
-
-    return nil
-end
-
---------------------------------------------------------------------------------
--- Dump a variable's contents, recursing to depth levels.
-
-local _type_colors
-local _show_match_type
-local _type_color
-local function format_var_name(var_name, var_type)
-    local c = _type_colors[var_type] or "\x1b[m"
-    local out = c..tostring(var_name)
-
-    if _show_match_type then
-        out = out.._type_color.." ("..var_type..")"
-    end
-
-    out = out.."\x1b[m"
-    return out
-end
-
-local _dumping = 0
--- luacheck: globals dumpvar
-function dumpvar(value, depth, name, indent, comma)
-    if _dumping == 0 then
-        _type_colors = get_lua_type_colors()
-        _show_match_type = settings.get("lua.show_match_type")
-        _type_color = _type_colors["types"] or "\x1b[m"
-    end
-
-    _dumping = _dumping + 1
-
-    if type(depth) == "string" and not name and not indent and not comma then
-        name = depth
-        depth = 1
-    end
-
-    if type(depth) ~= "number" then
-        depth = 1
-    elseif depth < 0 then
-        depth = 0
-    else
-        depth = math.floor(depth)
-    end
-
-    indent = indent or ""
-    comma = comma or ""
-
-    local t = type(value)
-    if t == "table" and depth > 0 then
-        if name then
-            clink.print(indent..format_var_name(name, t).." = { "..tostring(value))
-        else
-            clink.print(indent.."{ "..tostring(value))
-        end
-        local next_indent = indent.."  "
-        depth = depth - 1
-        for n,v in pairs(value) do
-            if v ~= _G then
-                dumpvar(v, depth, n, next_indent, ",")
-            end
-        end
-        clink.print(indent.."}"..comma)
-        _dumping = _dumping - 1
-        return
-    end
-
-    if value == nil then
-        value = "nil"
-    else
-        if t == "boolean" then
-            value = value and "true" or "false"
-        elseif t == "string" then
-            value = string.format("%q", value)
-        else
-            value = tostring(value)
-        end
-    end
-
-    if name then clink.print(indent..format_var_name(name, t).." = ", NONL) end -- luacheck: globals NONL
-    clink.print(value..comma)
-
-    _dumping = _dumping - 1
-    return
 end
 
 --------------------------------------------------------------------------------
@@ -361,6 +255,12 @@ function lua_generator:generate(line_state, match_builder) -- luacheck: no unuse
         end
         index = index + 1
     end
+
+    -- Must set volatile:  getwordbreakinfo() doesn't break "foo.bar", since the
+    -- "foo." is a necessary qualifier as part of "foo.bar".  Since it doesn't
+    -- break the word, matches need to be regenerated each time otherwise they
+    -- can't update when changing from "foo.a" to "foo.z".
+    match_builder:setvolatile()
 
     match_builder:setsuppressappend(true)
     return true
