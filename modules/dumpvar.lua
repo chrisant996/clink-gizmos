@@ -29,7 +29,7 @@
 
 local exports = {}
 
-local default_colors = "string=38;5;172 table=38;5;40 boolean=38;5;39 number=38;5;141 function=38;5;27 thread=38;5;203 types=38;5;244 nil=38;5;196"
+local default_colors = "string=38;5;172 table=38;5;40 boolean=38;5;39 number=38;5;141 function=38;5;27 thread=38;5;203 types=38;5;244 nil=38;5;196" -- luacheck: no max line length
 
 local norm = "\x1b[m"
 local type_colors = {}
@@ -48,29 +48,6 @@ local function format_var_name(var_name, var_type)
 
     out = out..sgr()
     return out
-end
-
-local function getvar(name)
-    if name == nil or name == "" then return nil end
-
-    local value = _G
-    local names = name:explode(".")
-
-    for _,n in ipairs(names) do
-        if value[n] == nil then return nil end
-
-        value = value[n]
-    end
-
-    if type(value) == "string" then
-        return string.format("%q", value)
-    elseif type(value) == "boolean" then
-        return value and "true" or "false"
-    elseif type(value) == "number" then
-        return value
-    end
-
-    return nil
 end
 
 local function dumpvar_internal(value, depth, name, indent, comma)
@@ -101,7 +78,7 @@ local function dumpvar_internal(value, depth, name, indent, comma)
         depth = depth - 1
         for n,v in pairs(value) do
             if v ~= _G then
-                dumpvar(v, depth, n, next_indent, ",")
+                dumpvar_internal(v, depth, n, next_indent, ",")
             end
         end
         clink.print(indent.."}"..comma)

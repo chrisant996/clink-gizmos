@@ -78,6 +78,33 @@ local function get_lua_type_colors()
 end
 
 --------------------------------------------------------------------------------
+-- Get a variable's content as a string.
+
+-- luacheck: globals getvar
+function getvar(name)
+    if name == nil or name == "" then return nil end
+
+    local value = _G
+    local names = name:explode(".")
+
+    for _,n in ipairs(names) do
+        if value[n] == nil then return nil end
+
+        value = value[n]
+    end
+
+    if type(value) == "string" then
+        return string.format("%q", value)
+    elseif type(value) == "boolean" then
+        return value and "true" or "false"
+    elseif type(value) == "number" then
+        return value
+    end
+
+    return nil
+end
+
+--------------------------------------------------------------------------------
 -- Determine whether the input line uses Lua Execute mode.
 
 local function is_lua_code(line_state)
