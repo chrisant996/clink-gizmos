@@ -495,8 +495,9 @@ end
 --------------------------------------------------------------------------------
 -- luacheck: globals luaexec_pause
 add_desc("luafunc:luaexec_pause", "Break into the Lua debugger")
-function luaexec_pause()
-	pause("Break into Lua debugger...")
+function luaexec_pause(rl_buffer)
+    pause("Break into Lua debugger...")
+    rl_buffer:beginoutput()
 end
 
 --------------------------------------------------------------------------------
