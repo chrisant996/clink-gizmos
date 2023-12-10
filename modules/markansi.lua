@@ -3,7 +3,8 @@
 --
 --      "@@_*hello*_@@"         -->  Literal "_*hello*_" without applying markup.
 --      "[display](hyperlink)"  -->  "display" plus escape codes for hyperlink.
---      "*text*"                -->  Boldface "text".
+--      "**text**"              -->  Boldface "text".
+--      "*text*"                -->  Italic "text".
 --      "_text_"                -->  Italic "text".
 --      "`text`"                -->  Reverse video "text".
 --      "~text~"                -->  Strikethrough "text".
@@ -20,7 +21,7 @@
 --
 --      local markansi = require("markansi")
 --
---      local s = markansi.mark("*Hello!*  _Isn't this cool?_")
+--      local s = markansi.mark("**Hello!**  _Isn't this cool?_")
 --      clink.print(s)
 --
 --  getcodes:
@@ -30,9 +31,10 @@
 --      local codes = markansi.getcodes()
 --      codes["*"] = { "93", "39" }     -- Change "*" to apply yellow/default.
 --      codes[":"] = { "104", "49" }    -- Add ":" to apply blue background.
---      codes["#"] = "93;7"             -- Override the code for Headings.
+--                                      -- Override the code for Headings.
+--      codes["#"] = { "93;7", "\x1b[27m░▒▓\x1b[7m ", " \x1b[27m▓▒░" }
 --
---      local s = markansi.mark(":Attention!:  Keep *calm* and carry *on*.")
+--      local s = markansi.mark(":Attention!:  Keep **calm** and carry **on**.", codes)
 --      clink.print(s)
 --
 
@@ -44,14 +46,16 @@
 --------------------------------------------------------------------------------
 local default_codes = {
     ["#"] = { "7", " " },           -- # Heading (begin SGR, padding)
-    ["*"] = { "1", "22" },          -- *bold*
-    ["_"] = { "3", "23" },          -- _italic_
+    ["*"] = { "1", "22" },          -- **bold**
+    ["_"] = { "3", "23" },          -- _italic_ or *italic*
     ["`"] = { "7", "27" },          -- `reverse`
     ["~"] = { "9", "29" },          -- ~strikethrough~
     ["|"] = { "4", "24" },          -- |underline|
     ["^"] = { "53", "55" },         -- ^overline^
     default_color = { "39", "49" }, -- #@|@ default colors.
 }
+
+local double_star_bold = true       -- "**" for bold, and convert "*" to "_".
 
 --------------------------------------------------------------------------------
 local iter
@@ -90,12 +94,9 @@ end
 
 local function match_hyperlink(text, offset)
     local display, hyperlink
-    display, hyperlink = text:match("^%[([^%[%]]+)%]%((.+)%) ", offset)
-    if not display then
-        display, hyperlink = text:match("^%[([^%[%]]+)%]%((.+)%)$", offset)
-        if not display then
-            return
-        end
+    display, hyperlink = text:match("^%[([^%[%]]+)%]%(([^)]+)%)", offset)
+    if not display or not hyperlink then
+        return
     end
     return display, hyperlink, (1 + #display + 2 + #hyperlink + 1)
 end
@@ -165,7 +166,7 @@ local function mark(text, codes)
         need_norm = true
     end
 
-    local function clear_mode(c)
+    local function clear_mode(c, tc)
         local index = mode[c]
         if index then
             for i = index + 1, #mode do
@@ -175,11 +176,16 @@ local function mark(text, codes)
             mode[c] = nil
             table.remove(mode, index)
         end
-        need_reapply_colors = true
+        if tc then
+            concat(sgr(tc))
+        else
+            need_reapply_colors = true
+        end
     end
 
     while true do
         local offset = _curr_offset
+        local cc
         local c = peek
         if not c then
             break
@@ -188,12 +194,20 @@ local function mark(text, codes)
 
         if offset == 1 and c == "#" and text:find("^#+ ") then
             local t = codes["#"]
-            set_mode(mode, c, t[1])
+            local tc, prolog
+            if type(t) == "string" then
+                tc = t
+                prolog = ""
+            else
+                tc = t[1]
+                prolog = t[2] or ""
+            end
+            set_mode(c, tc)
             while c == "#" do
                 c = peek
                 peek = next()
             end
-            concat(sgr(t[1])..(t[2] or ""))
+            concat(sgr(tc)..prolog)
             c = peek
             peek = next()
         end
@@ -205,11 +219,11 @@ local function mark(text, codes)
                 if not c then
                     break
                 elseif c == "@" then
-                    local cc = next()
-                    if cc == "@" then
+                    local n = next()
+                    if n == "@" then
                         break
                     else
-                        tmp = tmp..c..cc
+                        tmp = tmp..c..n
                     end
                 else
                     tmp = tmp..c
@@ -218,20 +232,35 @@ local function mark(text, codes)
             concat(tmp)
             c = ""
             peek = next()
-        elseif c == "[" and match_hyperlink(text, offset) then
+        elseif c == "[" then
             local display, hyperlink, parsed_len = match_hyperlink(text, offset)
-            c = "\x1b]8;;"..hyperlink.."\a"..display.."\x1b]8;;\a"
-            local t = codes["["]
-            if type(t) == "table" then
-                c = sgr(t[1])..c..sgr(t[2])
-                need_norm = true
+            local defer_reapply_colors
+            if display then
+                c = "\x1b]8;;"..hyperlink.."\a"..display.."\x1b]8;;\a"
+                local t = codes["["]
+                if type(t) == "string" then
+                    c = sgr(t)..c
+                    defer_reapply_colors = true
+                    need_norm = true
+                elseif type(t) == "table" then
+                    c = sgr(t[1])..c
+                    if t[2] then
+                        c = c..sgr(t[2])
+                    else
+                        defer_reapply_colors = true
+                    end
+                    need_norm = true
+                end
+                parsed_len = parsed_len - 1
+                while peek and parsed_len > 0 do
+                    local x = peek
+                    peek = next()
+                    parsed_len = parsed_len - #x
+                end
             end
-            parsed_len = parsed_len - 1
-            while peek and parsed_len > 0 do
-                local x = peek
-                peek = next()
-                parsed_len = parsed_len - #x
-            end
+            concat(c)
+            c = ""
+            need_reapply_colors = defer_reapply_colors or need_reapply_colors
         elseif c == "#" and (peek or ""):find("[A-Fa-f0-9|@]") then
             local fg = ""
             local bg = ""
@@ -264,7 +293,7 @@ local function mark(text, codes)
                             break
                         end
                     end
-                elseif c:find("[A-Za-z0-9]") then
+                elseif c:find("[A-Fa-f0-9]") then
                     if color == "@" then
                         break
                     end
@@ -315,21 +344,34 @@ local function mark(text, codes)
                     c = c..sgr(v)
                 end
             end
+        elseif double_star_bold and c == "*" then
+            if peek ~= "*" then
+                cc = "_"    -- Redirect * to _ for code lookup.
+            else
+                cc = "*"
+                c = "**"
+                peek = next()
+            end
         end
 
         if c ~= "" then
             if mode[c] and not (peek or ""):find("[A-Za-z0-9]") then
-                local t = codes[c]
-                if type(t) == "table" then
-                    clear_mode(c)
-                    c = ""
-                end
+                local t = codes[cc or c]
+                local tc = (type(t) == "table" and t[2])
+                clear_mode(c, tc)
+                c = ""
             end
 
             if startable and peek ~= " " then
-                local t = codes[c]
-                if type(t) == "table" and not mode[c] then
-                    set_mode(c, t[1])
+                local t = codes[cc or c]
+                local tc
+                if type(t) == "string" then
+                    tc = t
+                elseif type(t) == "table" then
+                    tc = t[1]
+                end
+                if tc and not mode[c] then
+                    set_mode(c, tc)
                     c = ""
                 end
             end
@@ -343,7 +385,7 @@ local function mark(text, codes)
 
     if mode["#"] then
         -- Final padding for Heading.
-        s = s..(codes["#"][2] or "")
+        s = s..(codes["#"][3] or codes["#"][2] or "")
     end
 
     if need_norm then
