@@ -21,6 +21,7 @@
 --      local dv = require("dumpvar")
 --
 --      dv.show_type = true             -- Whether to show type names.
+--      dv.sort_tables = true           -- Whether to sort named records in tables.
 --      dv.type_colors = "..."          -- String of colors:  "typename1=sgr_code typename2=sgr_code ...etc"
 --      dv.init = function()            -- Function to be run every time dumpvar() is called.
 --          dv.show_type = true
@@ -76,9 +77,29 @@ local function dumpvar_internal(value, depth, name, indent, comma)
         end
         local next_indent = indent.."  "
         depth = depth - 1
-        for n,v in pairs(value) do
-            if v ~= _G then
-                dumpvar_internal(v, depth, n, next_indent, ",")
+        if exports.sort_tables then
+            local keys = {}
+            for n,v in pairs(value) do
+                if v ~= _G then
+                    if type(n) == "number" then
+                        dumpvar_internal(v, depth, n, next_indent, ",")
+                    else
+                        table.insert(keys, n)
+                    end
+                end
+            end
+            table.sort(keys)
+            for _,n in ipairs(keys) do
+                local v = value[n]
+                if v ~= _G then
+                    dumpvar_internal(v, depth, n, next_indent, ",")
+                end
+            end
+        else
+            for n,v in pairs(value) do
+                if v ~= _G then
+                    dumpvar_internal(v, depth, n, next_indent, ",")
+                end
             end
         end
         clink.print(indent.."}"..comma)
@@ -121,6 +142,7 @@ end
 
 exports.init = function() end
 exports.show_type = true
+exports.sort_tables = true
 exports.type_colors = default_colors
 
 return exports
