@@ -264,7 +264,7 @@ function lua_generator:generate(line_state, match_builder) -- luacheck: no unuse
             if type(parent) == "table" then
                 local prefix = fields[index]:lower()
                 for name,_ in pairs(parent or _G) do
-                    if #prefix == 0 or name:sub(1, #prefix):lower() == prefix then
+                    if #prefix == 0 or (type(name) == "string" and name:sub(1, #prefix):lower() == prefix) then
                         match_builder:addmatch(parentname..name, "word")
                     end
                 end
