@@ -176,11 +176,11 @@ local function get_fzf(env)
 end
 
 local function get_clink()
-    local clink_alias = os.getalias('clink')
-    if not clink_alias or clink_alias == '' then
+    local exe = CLINK_EXE
+    if not exe or exe == '' then
         return ''
     end
-    return clink_alias:gsub(' $[*]', '')
+    return '"'..exe..'"'
 end
 
 local function need_quote(word)
