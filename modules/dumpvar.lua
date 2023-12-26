@@ -16,7 +16,7 @@
 --      dumpvar(variable)               -- Prints content of variable.
 --      dumpvar(variable, 3)            -- Prints content of variable, recursing to 3 levels of tables.
 --
--- Optionally, you can configuration dumpvar:
+-- Optionally, you can configure dumpvar:
 --
 --      local dv = require("dumpvar")
 --
@@ -27,6 +27,10 @@
 --          dv.show_type = true
 --          dv.type_colors = "..."
 --      end
+--
+-- If you configure dumpvar, consider using a wrapper function to save/restore
+-- pre-existing configuration, to avoid interfering with other scripts that may
+-- also be using dumpvar as well.
 
 local exports = {}
 
