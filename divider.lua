@@ -187,7 +187,7 @@ local function maybe_print_divider_end()
 end
 
 local inited_beginedit
-local div_can_divide
+local div_can_divide = true
 
 function div_prompt:filter(prompt) -- luacheck: no unused
     if not inited_beginedit then
