@@ -56,7 +56,11 @@ if not io.sopen then
 end
 
 --------------------------------------------------------------------------------
-settings.add("cwdhistory.limit", 100, "Limit the cwd history", "At most this many recently used current working directories will be remembered.") -- luacheck: no max line length
+settings.add("cwdhistory.limit", 100, "Limit the cwd history",
+             "At most this many recently used current working directories will be remembered.")
+settings.add("cwdhistory.restore", false, "Restore the most recent cwd on startup",
+             "When this is 'true', when Clink is injected it automatically changes to the\n"..
+             "most recent cwd in the history.")
 
 --------------------------------------------------------------------------------
 local cwd_history_list = {}
@@ -126,7 +130,7 @@ local function read_history(file)
 end
 
 --------------------------------------------------------------------------------
-local function merge_nodups(file)
+local function merge_nodups(file, nocwd)
     local persisted_list = read_history(file)
     local limit = settings.get("cwdhistory.limit")
 
@@ -146,8 +150,10 @@ local function merge_nodups(file)
 
     -- Build reversed list with duplicates removed.
     local reversed = {}
-    local cwd_entry = { dir=os.getcwd(), time=os.time(), keep=true }
-    add_and_update_index(reversed, cwd_entry, index, true--[[force]])
+    if not nocwd then
+        local cwd_entry = { dir=os.getcwd(), time=os.time(), keep=true }
+        add_and_update_index(reversed, cwd_entry, index, true--[[force]])
+    end
     for i = #new_dirs, 1, -1 do
         table.insert(reversed, new_dirs[i])
     end
@@ -182,7 +188,7 @@ local function merge_nodups(file)
 end
 
 --------------------------------------------------------------------------------
-local function update_history_internal(history_filename)
+local function update_history_internal(history_filename, nocwd)
     local f
     local binmode = io.truncate and "" or "b"
 
@@ -212,7 +218,7 @@ local function update_history_internal(history_filename)
 
     -- Merge the in-memory list with the persisted list.
     local loaded_list
-    cwd_history_list, loaded_list = merge_nodups(f)
+    cwd_history_list, loaded_list = merge_nodups(f, nocwd)
 
     -- Be nice to SSD lifetime, and to performance!  Do not rewrite the file
     -- unless it has changed.  But do not rewrite the file if the only change is
@@ -263,17 +269,17 @@ local function update_history_internal(history_filename)
 end
 
 --------------------------------------------------------------------------------
-local function update_history()
+local function update_history(nocwd)
     local file = get_history_filename()
 
     if using_history_file then
-        update_history_internal(using_history_file)
+        update_history_internal(using_history_file, nocwd)
     end
 
     if using_history_file ~= file then
         reset_cache()
         using_history_file = file
-        update_history_internal(using_history_file)
+        update_history_internal(using_history_file, nocwd)
     end
 end
 
@@ -451,6 +457,41 @@ end
 
 
 --------------------------------------------------------------------------------
+local function do_restore()
+    if not settings.get("cwdhistory.restore") then
+        return
+    end
+    local norestore = os.getenv("CWDHISTORY_NORESTORE")
+    if norestore and tonumber(norestore) ~= 0 then
+        return
+    end
+    return true
+end
+
+--------------------------------------------------------------------------------
+local restore_dir
+clink.oninject(function ()
+    if do_restore() then
+        local nocwd = true
+        update_history(nocwd)
+        if cwd_history_list then
+            local last = #cwd_history_list
+            local dir = cwd_history_list[last].dir
+            restore_dir = dir
+        end
+    end
+end)
+
+--------------------------------------------------------------------------------
+clink.onprovideline(function ()
+    if restore_dir then
+        local dir = restore_dir
+        restore_dir = nil
+        return "  cd /d " .. dir
+    end
+end)
+
+--------------------------------------------------------------------------------
 local initialized
 clink.onbeginedit(function ()
     if initialized then
@@ -463,7 +504,7 @@ clink.onbeginedit(function ()
     -- last (it isn't skipped).
     initialized = true
     clink.onbeginedit(function ()
-        update_history()
+        update_history(restore_dir)
     end)
 end)
 
