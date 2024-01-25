@@ -156,4 +156,4 @@ clink.argmatcher(table.unpack(string.explode(i_commands or "i")))
 :addarg({onarg=i_ondir, clink.dirmatches})
 :addflags("-?", "--help")
 :setclassifier(i_classify)
-:chaincommand()
+:chaincommand("doskey") -- `i` is able to expand doskey aliases.
