@@ -469,15 +469,28 @@ local function do_restore()
 end
 
 --------------------------------------------------------------------------------
+local function is_in_history_labels_dir(dir, history_labels_dir)
+    dir = clink.lower(path.normalise(path.join(dir, "")))
+    history_labels_dir = clink.lower(path.normalise(path.join(history_labels_dir, "")))
+    if dir:find(history_labels_dir, 1, true) == 1 then
+        return true
+    end
+end
+
+--------------------------------------------------------------------------------
 local restore_dir
 clink.oninject(function ()
+    os.setenv("=cwdhistory_injected", "1")
     if do_restore() then
         local nocwd = true
         update_history(nocwd)
         if cwd_history_list then
             local last = #cwd_history_list
             local dir = cwd_history_list[last].dir
-            restore_dir = dir
+            local history_labels_dir = os.getenv("=history_labels_dir")
+            if not history_labels_dir or is_in_history_labels_dir(dir, history_labels_dir) then
+                restore_dir = dir
+            end
         end
     end
 end)

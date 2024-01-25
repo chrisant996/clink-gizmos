@@ -26,6 +26,7 @@ if not unicode or not unicode.normalize then
 end
 
 local using_label
+local label_dir
 
 local function select_label()
     -- Get the current directory.
@@ -37,6 +38,7 @@ local function select_label()
         local candidate = unicode.normalize(3, string.lower(path.join(path.normalise(x[1]), "")))
         if cwd:find(candidate, 1, true--[[plain]]) == 1 then
             label = x[2]
+            label_dir = candidate
             break
         end
     end
@@ -50,6 +52,14 @@ local function select_label()
     -- history file.
     using_label = label
     os.setenv("CLINK_HISTORY_LABEL", label)
+
+    -- Let other scripts know the directory that determined the history label.
+    os.setenv("=history_labels_dir", label_dir or "")
+end
+
+local cwdhistory_restore = settings.get("cwdhistory.restore")
+if cwdhistory_restore and not os.getenv("=cwdhistory_injected") then
+    select_label()
 end
 
 clink.onbeginedit(select_label)
