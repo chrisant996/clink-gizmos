@@ -27,25 +27,25 @@ Each script file contains usage information in comments at the top of the script
 
 Script Name | Description
 -|-
-auto_argmatcher.lua | Reads a config file and automatically creates argmatchers (completion generators) for specified programs by parsing their help text output.  Refer to the usage information in the script file for details.
-autopull.lua | Periodically runs `git pull` in a configurable list of directories.  Refer to the usage information in the script file for details.
-cwdhistory.lua | Adds cwd history that is saved between sessions.  Use Alt-Ctrl-PgUp to show the cwd history popup list.  Refer to the usage information in the script file for details.
-divider.lua | Automatically prints a divider line before and after running certain commands.  The list of commands is configurable.  Refer to the usage information in the script file for details.
-fuzzy_history.lua | Adds an autosuggest strategy `fuzzy_history` which can ignore path or file extension when providing suggestions from the command history list.  Refer to the usage information in the script file for details.
-fzf.lua | Adds support for using [fzf](https://github.com/junegunn/fzf) with Clink.  Refer to the usage information in the script file for how to activate key bindings.  (This is the script from the [clink-fzf](https://github.com/chrisant996/clink-fzf) repo.)
-history_labels.lua | Can automatically switch to a different history file based on the current directory.  Refer to the usage information in the script file for how to configure directories and history files.
-i.lua | Adds an `i {dir} {command}` command that changes to _{dir}_, runs _{command}_, and changes back to the original directory.  Refer to the usage information in the script file for details and other features.
-luaexec.lua | Some handy debugging aids to use with Clink Lua scripts.  Refer to the usage information in the script file for details.
-show_tips.lua | Shows a tip about Clink each time Clink is injected.
-tilde_autoexpand.lua | Automatically expands tildes into the user's home directory (disabled by default; see usage information in the script file for how to enable it).
-vscode_shell_integration.lua | Automatically enables shell integration for VSCode embedded terminal windows.
-z_dir_popup.lua | If you use [z.lua](https://github.com/skywind3000/z.lua) then this provides a popup listing of directories from z.  See usage information in the script file for details.
+[auto_argmatcher.lua](auto_argmatcher.lua) | Reads a config file and automatically creates argmatchers (completion generators) for specified programs by parsing their help text output.  Refer to the usage information in the script file for details.
+[autopull.lua](autopull.lua) | Periodically runs `git pull` in a configurable list of directories.  Refer to the usage information in the script file for details.
+[cwdhistory.lua](cwdhistory.lua) | Adds cwd history that is saved between sessions.  Use Alt-Ctrl-PgUp to show the cwd history popup list.  Refer to the usage information in the script file for details.
+[divider.lua](divider.lua) | Automatically prints a divider line before and after running certain commands.  The list of commands is configurable.  Refer to the usage information in the script file for details.
+[fuzzy_history.lua](fuzzy_history.lua) | Adds an autosuggest strategy `fuzzy_history` which can ignore path or file extension when providing suggestions from the command history list.  Refer to the usage information in the script file for details.
+[fzf.lua](fzf.lua) | Adds support for using [fzf](https://github.com/junegunn/fzf) with Clink.  Refer to the usage information in the script file for how to activate key bindings.  (This is the script from the [clink-fzf](https://github.com/chrisant996/clink-fzf) repo.)
+[history_labels.lua](history_labels.lua) | Can automatically switch to a different history file based on the current directory.  Refer to the usage information in the script file for how to configure directories and history files.
+[i.lua](i.lua) | Adds an `i {dir} {command}` command that changes to _{dir}_, runs _{command}_, and changes back to the original directory.  Refer to the usage information in the script file for details and other features.
+[luaexec.lua](luaexec.lua) | Some handy debugging aids to use with Clink Lua scripts.  Refer to the usage information in the script file for details.
+[show_tips.lua](show_tips.lua) | Shows a tip about Clink each time Clink is injected.
+[tilde_autoexpand.lua](tilde_autoexpand.lua) | Automatically expands tildes into the user's home directory (disabled by default; see usage information in the script file for how to enable it).
+[vscode_shell_integration.lua](vscode_shell_integration.lua) | Automatically enables shell integration for VSCode embedded terminal windows.
+[z_dir_popup.lua](z_dir_popup.lua) | If you use [z.lua](https://github.com/skywind3000/z.lua) then this provides a popup listing of directories from z.  See usage information in the script file for details.
 
 # Rough Prototype Features
 
 Some of the included scripts are rough prototypes that can be useful, but are not fully functional and/or have potentially significant or dangerous limitations.  These prototype scripts are **disabled by default**, for safety and to avoid interference.  See below for information about each, and for how to enable each script if you wish.
 
-## fishcomplete.lua
+## [fishcomplete.lua](fishcomplete.lua)
 
 _Disabled by default.  To enable it, set the global variable `clink_gizmos_fishcomplete = true` in one of your Lua scripts that gets loaded before the clink-gizmos directory._
 
@@ -62,7 +62,7 @@ Variable | Value | Description
 
 > **Note:** The fishcomplete script does not yet handle the `-e`, `-p`, `-w`, or `-x` flags for the fish `complete` command.  It attempts to handle simple fish completion scripts, but it will likely malfunction with more sophisticated fish completion scripts.
 
-## command_substitution.lua
+## [command_substitution.lua](command_substitution.lua)
 
 _Disabled by default.  To enable it, set the global variable `clink_gizmos_command_substitution = true` in one of your Lua scripts that gets loaded before the clink-gizmos directory._
 
