@@ -972,6 +972,7 @@ local EXTENSION_ICONS =
 }
 
 local function get_dir_icon(name)
+    name = name:gsub("[/\\]+$", "")
     local icon_name = DIR_ICONS[path.getname(name)]
     if icon_name then
         return get_icon(icon_name)
@@ -1052,17 +1053,23 @@ local function add_icons(matches)
 
             -- Choose icons for file and directory matches.
             local icon
+            local text = m.display or m.match
             if m.type:find("file") then
-                icon = get_file_icon(m.match) or get_icon("FILE_OUTLINE")
+                text = path.getname(text)
+                icon = get_file_icon(text)
+                if not icon then
+                    local ext = path.getextension(text) or ""
+                    icon = get_icon(ext == "" and "FILE_OUTLINE" or "FILE")
+                end
             elseif m.type:find("dir") then
-                icon = get_dir_icon(m.match:gsub("[/\\]+$", "")) or get_icon("FOLDER")
+                text = path.getname(text:gsub("[/\\]+$", ""))
+                icon = get_dir_icon(text) or get_icon("FOLDER")
             end
 
             -- If an icon was chosen, jam it together with a color and the match
             -- text, and make a custom display string.
             if icon then
                 local color = rl.getmatchcolor(m)
-                local text = m.display or m.match
                 m.display = "\x1b[m"..color..icon..spacing..text
             end
         end
