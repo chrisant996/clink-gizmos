@@ -216,6 +216,8 @@ local NERDFONTICONS =
     HISTORY             = "",
     PDB                 = "",
     OS_WINDOWS_EXE      = "",
+    FOLDER_LINK         = "",
+    FILE_LINK           = "",
 }
 
 local ____ = ""
@@ -1031,13 +1033,13 @@ local function add_icons(matches)
         return matches
     end
 
-    nerd_fonts_version = tonumber(os.getenv("DIRX_NERD_FONTS_VERSION")) or 0
+    nerd_fonts_version = tonumber(os.getenv("DIRX_NERD_FONTS_VERSION") or "") or 0
     if nerd_fonts_version ~= 2 then
         nerd_fonts_version = 3
     end
 
     spacing = os.getenv("DIRX_ICON_SPACING") or os.getenv("EZA_ICON_SPACING") or os.getenv("EXA_ICON_SPACING")
-    spacing = tonumber(spacing) or 0
+    spacing = tonumber(spacing or "") or 0
     if spacing < 1 then
         spacing = 1
     elseif spacing > 4 then
@@ -1058,12 +1060,16 @@ local function add_icons(matches)
                 text = path.getname(text)
                 icon = get_file_icon(text)
                 if not icon then
-                    local ext = path.getextension(text) or ""
-                    icon = get_icon(ext == "" and "FILE_OUTLINE" or "FILE")
+                    if m.type:find("link") then
+                        icon = get_icon("FILE_LINK")
+                    else
+                        local ext = path.getextension(text) or ""
+                        icon = get_icon(ext == "" and "FILE_OUTLINE" or "FILE")
+                    end
                 end
             elseif m.type:find("dir") then
                 text = path.getname(text:gsub("[/\\]+$", ""))
-                icon = get_dir_icon(text) or get_icon("FOLDER")
+                icon = get_dir_icon(text) or get_icon(m.type:find("link") and "FOLDER_LINK" or "FOLDER")
             end
 
             -- If an icon was chosen, jam it together with a color and the match
