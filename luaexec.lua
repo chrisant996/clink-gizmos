@@ -506,7 +506,10 @@ end
 if rl.setbinding then
     rl.setbinding([["\e[H"]],     [["luafunc:luaexec_begin_line"]],       "emacs")  -- Home
     rl.setbinding([["\e[1;2H"]],  [["luafunc:luaexec_shift_begin_line"]], "emacs")  -- Shift+Home
-    rl.setbinding([["\C-a"]],     [["luafunc:luaexec_select_all"]],       "emacs")  -- Ctrl+A
+    local ca_binding = rl.getbinding([["\C-a"]])
+    if ca_binding == "cua-select-all" or ca_binding == "clink-selectall-conhost" then
+        rl.setbinding([["\C-a"]], [["luafunc:luaexec_select_all"]],       "emacs")  -- Ctrl+A
+    end
     rl.setbinding([["\e[27;8;67~"]], [["luafunc:luaexec_pause"]],         "emacs")  -- Alt+Ctrl+Shift+C
     rl.setbinding([["\C-x\C-l"]], [["luafunc:clink_execute_lua"]],        "emacs")  -- Ctrl+X,Ctrl+L
     rl.setbinding([["\C-x\C-k"]], [["luafunc:clink_expand_lua_var"]],     "emacs")  -- Ctrl+X,Ctrl+K
