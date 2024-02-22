@@ -6,7 +6,34 @@
 --  - You can enable icons by running `clink set matchicons.enable true`
 --  - You can disable icons by running `clink set matchicons.enable false`
 --
+-- Other Lua scripts can use the following public function to add their own
+-- icons to matches, but --WARNING!-- ONLY IF nothing calls clink.dirmatches(),
+-- or clink.filematches(), clink.dirmatchesexact(), or clink.filematchesexact().
+-- If any of those are used along with the following, then some matches will
+-- end up with TWO icons.
 --
+-- This adds a "!" icon to the match in m, where m is a table in the format
+-- expected by builder:addmatch().  If matchicons are disabled or the matchicons
+-- script is not loaded, then it gracefully has no effect.
+--
+--      if matchicons and matchicons.addicontomatch then
+--          matchicons.addicontomatch(m, "!", "93")
+--      end
+--
+-- This adds icons to all file and directory type matches in the input table,
+-- which must be in the format expect by builder:addmatches().  If matchicons
+-- are disabled or the matchicons script is not loaded, then it gracefully has
+-- no effect.
+--
+--      if matchicons and matchicons.addicons then
+--          matchicons.addicons(matches)
+--      end
+--
+-- This gets the icon for a file or directory match.
+--
+--      local icon = matchicons.geticon(match)
+--
+--------------------------------------------------------------------------------
 -- WARNING:  This script makes clink.dirmatches() and clink.filematches()
 -- behave slightly differently than how they're documented.  That can break
 -- scripts, if they expect the functions to behave exactly how they're
@@ -14,6 +41,7 @@
 --
 -- OTHER CAVEATS:  This can be incompatible with completion scripts that
 -- generate custom display strings themselves.
+--------------------------------------------------------------------------------
 
 if not settings.add then
     return
@@ -22,6 +50,9 @@ end
 settings.add("matchicons.enable", false,
              "Enables icons in file completions",
              "Requires a Nerd Font; visit https://nerdfonts.com")
+
+--luacheck: globals matchicons
+matchicons = {}
 
 local NERDFONTICONS =
 {
@@ -1028,55 +1059,87 @@ local function backfill_icons(matches)
     return matches
 end
 
-local function add_icons(matches)
-    if not settings.get("matchicons.enable") then
-        return matches
+local function init(nobackfill)
+    if settings.get("matchicons.enable") then
+        nerd_fonts_version = tonumber(os.getenv("DIRX_NERD_FONTS_VERSION") or "") or 0
+        if nerd_fonts_version ~= 2 then
+            nerd_fonts_version = 3
+        end
+
+        spacing = os.getenv("DIRX_ICON_SPACING") or os.getenv("EZA_ICON_SPACING") or os.getenv("EXA_ICON_SPACING")
+        spacing = tonumber(spacing or "") or 0
+        if spacing < 1 then
+            spacing = 1
+        elseif spacing > 4 then
+            spacing = 4
+        end
+        spacing = string.rep(" ", spacing)
+
+        if not nobackfill then
+            clink.ondisplaymatches(backfill_icons)
+        end
+        return true
     end
+end
 
-    nerd_fonts_version = tonumber(os.getenv("DIRX_NERD_FONTS_VERSION") or "") or 0
-    if nerd_fonts_version ~= 2 then
-        nerd_fonts_version = 3
-    end
-
-    spacing = os.getenv("DIRX_ICON_SPACING") or os.getenv("EZA_ICON_SPACING") or os.getenv("EXA_ICON_SPACING")
-    spacing = tonumber(spacing or "") or 0
-    if spacing < 1 then
-        spacing = 1
-    elseif spacing > 4 then
-        spacing = 4
-    end
-    spacing = string.rep(" ", spacing)
-
-    clink.ondisplaymatches(backfill_icons)
-    for _, m in ipairs(matches) do
-        if m.type then
-            -- See documentation for info on how match type strings work.
-            -- https://chrisant996.github.io/clink/clink.html#builder:addmatch
-
-            -- Choose icons for file and directory matches.
-            local icon
-            local text = m.display or m.match
-            if m.type:find("file") then
-                text = path.getname(text)
-                icon = get_file_icon(text)
-                if not icon then
-                    if m.type:find("link") then
-                        icon = get_icon("FILE_LINK")
-                    else
-                        local ext = path.getextension(text) or ""
-                        icon = get_icon(ext == "" and "FILE_OUTLINE" or "FILE")
-                    end
+local function get_match_icon(m)
+    if m.type then
+        if m.type:find("file") then
+            local text = path.getname(m.match)
+            local icon = get_file_icon(text)
+            if not icon then
+                if m.type:find("link") then
+                    icon = get_icon("FILE_LINK")
+                else
+                    local ext = path.getextension(text) or ""
+                    icon = get_icon(ext == "" and "FILE_OUTLINE" or "FILE")
                 end
-            elseif m.type:find("dir") then
-                text = path.getname(text:gsub("[/\\]+$", ""))
-                icon = get_dir_icon(text) or get_icon(m.type:find("link") and "FOLDER_LINK" or "FOLDER")
             end
+            return icon
+        elseif m.type:find("dir") then
+            local text = path.getname(m.match:gsub("[/\\]+$", ""))
+            local icon = get_dir_icon(text) or get_icon(m.type:find("link") and "FOLDER_LINK" or "FOLDER")
+            return icon
+        end
+    end
+end
 
-            -- If an icon was chosen, jam it together with a color and the match
-            -- text, and make a custom display string.
-            if icon then
-                local color = rl.getmatchcolor(m)
-                m.display = "\x1b[m"..color..icon..spacing..text
+local function add_icons(matches, nobackfill)
+    if init(nobackfill) then
+        for _, m in ipairs(matches) do
+            if m.type then
+                -- See documentation for info on how match type strings work.
+                -- https://chrisant996.github.io/clink/clink.html#builder:addmatch
+
+                -- Choose icons for file and directory matches.
+                local icon
+                local text
+                if m.type:find("file") then
+                    text = path.getname(m.match)
+                    icon = get_file_icon(text)
+                    if not icon then
+                        if m.type:find("link") then
+                            icon = get_icon("FILE_LINK")
+                        else
+                            local ext = path.getextension(text) or ""
+                            icon = get_icon(ext == "" and "FILE_OUTLINE" or "FILE")
+                        end
+                    end
+                    text = m.display or text
+                elseif m.type:find("dir") then
+                    text = path.getname(m.match:gsub("[/\\]+$", ""))
+                    icon = get_dir_icon(text) or get_icon(m.type:find("link") and "FOLDER_LINK" or "FOLDER")
+                    text = m.display or text.."\\"
+                else
+                    text = m.display or m.match
+                end
+
+                -- If an icon was chosen, jam it together with a color and the match
+                -- text, and make a custom display string.
+                if icon then
+                    local color = rl.getmatchcolor(m)
+                    m.display = "\x1b[m"..color..icon..spacing..text
+                end
             end
         end
     end
@@ -1114,3 +1177,48 @@ if original_filematchesexact then
     end
 end
 
+matchicons.geticon = function(match)
+    if type(match) == "table" then
+        return get_match_icon(match)
+    elseif match then
+        return get_match_icon({ match=match })
+    end
+end
+
+matchicons.addicons = function(matches)
+    return add_icons(matches, true)
+end
+
+matchicons.addicontomatch = function (m, icon, color)
+    if init(true) then
+        -- See documentation for info on how match type strings work.
+        -- https://chrisant996.github.io/clink/clink.html#builder:addmatch
+
+        if not icon then
+            icon = get_match_icon(m)
+        end
+
+        if icon and console.cellcount(icon) == 1 then
+            local text
+            if m.type:find("file") then
+                text = m.display or path.getname(m.match)
+            elseif m.type:find("dir") then
+                text = m.display or path.getname(m.match:gsub("[/\\]+$", "")).."\\"
+            else
+                text = m.display or m.match
+            end
+
+            -- Jam the icon together with a color and the match text, and make a
+            -- custom display string.
+            if icon then
+                if color then
+                    color = "\x1b[0;"..color.."m"
+                else
+                    color = "\x1b[m"
+                end
+                m.display = color..icon..spacing..text
+            end
+        end
+    end
+    return m
+end
