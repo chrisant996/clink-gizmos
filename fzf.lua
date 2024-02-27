@@ -54,12 +54,18 @@
 --                                inserted by customized FZF_CTRL_T_COMMAND and
 --                                FZF_ALT_C_COMMAND commands.
 --
--- To get file icons to show up in FZF, you can use DIRX v0.8 or newer with
+-- To get file icons to show up in FZF, you can use DIRX v0.9 or newer with
 -- Clink v1.6.5, and set the FZF env vars like this:
 --
---      set FZF_CTRL_T_COMMAND=dirx.exe /b /s /a:-s --icons=always --utf8 $dir
---      set FZF_ALT_C_COMMAND=dirx.exe /b /s /a:d-s --icons=always --utf8 $dir
+--      set FZF_CTRL_T_COMMAND=dirx.exe /b /s /X:d /a:-s-h --icons=always --utf8 $dir
+--      set FZF_ALT_C_COMMAND=dirx.exe /b /s /X:d /a:d-s-h --icons=always --utf8 $dir
 --      set FZF_ICON_WIDTH=2
+--
+-- If you want it to recurse into hidden directories, then remove the `/X:d`
+-- part from the commands in the environment variables.
+--
+-- If you want it to list hidden files and directories, then remove the `-h`
+-- part at the end of the `/a:` flags in the environment variables.
 --
 -- DIRX is available at https://github.com/chrisant996/dirx
 -- Clink is available at https://github.com/chrisant996/clink

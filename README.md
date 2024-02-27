@@ -46,7 +46,7 @@ Script Name | Description
 
 Refer to the README at [clink-fzf](https://github.com/chrisant996/clink-fzf).
 
-You can have file icons in fzf completion lists, if you use Clink v1.6.5 or newer and [DirX](https://github.com/chrisant996/dirx) v0.8 or newer and configure a few FZF environment variables.  See [Icons in FZF](https://github.com/chrisant996/clink-fzf/#icons-in-fzf) for details.
+You can have file icons in fzf completion lists, if you use Clink v1.6.5 or newer and [DirX](https://github.com/chrisant996/dirx) v0.9 or newer and configure a few FZF environment variables.  See [Icons in FZF](https://github.com/chrisant996/clink-fzf/#icons-in-fzf) for details.
 
 # Rough Prototype Features
 
