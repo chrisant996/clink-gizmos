@@ -196,7 +196,7 @@ local function make_query_string(rl_buffer)
     return s
 end
 
-local function get_fzf(env)
+local function get_fzf(env, addl_options)
     local command = settings.get('fzf.exe_location')
     if not command or command == '' then
         command = 'fzf.exe'
@@ -215,6 +215,10 @@ local function get_fzf(env)
     local height = settings.get('fzf.height')
     if height and height ~= '' then
         command = '"'..command..'" --height '..height
+    end
+
+    if addl_options then
+        command = command..' '..addl_options
     end
 
     if env then
@@ -244,6 +248,10 @@ local function maybe_quote(word)
         word = '"' .. word .. '"'
     end
     return word
+end
+
+local function escape_quotes(text)
+    return text:gsub('"', '\\"')
 end
 
 local function replace_dir(str, word)
@@ -429,7 +437,7 @@ end
 
 -- luacheck: globals fzf_history
 add_help_desc("luafunc:fzf_history",
-              "List history entries; choose one to insert it")
+              "List history entries; choose one to insert it (press DEL to delete selected history entry)")
 function fzf_history(rl_buffer)
     local clink_command = get_clink()
     if #clink_command == 0 then
@@ -438,16 +446,21 @@ function fzf_history(rl_buffer)
     end
 
     -- Build command to get history for the current Clink session.
-    local history = clink_command..' --session '..clink.getsession()..' history --bare'
+    local history = clink_command..' --session '..clink.getsession()..' history --time-format " "'
     if diag then
         history = history..' --diag'
     end
+
+    -- Make key binding for DEL to delete a history entry.
+    local history_delete = escape_quotes(clink_command..' --session '..clink.getsession()..' history delete {1}')
+    local history_reload = escape_quotes(history)
+    local del_binding = '--bind "del:execute-silent('..history_delete..')+reload('..history_reload..')"'
 
     -- This produces a '--query' string by stripping certain problematic
     -- characters from the input line.  This still does a good job of matching,
     -- because fzf uses fuzzy matching.
     local qs = make_query_string(rl_buffer)
-    local r = io.popen('2>nul '..history..' | '..get_fzf('FZF_CTRL_R_OPTS')..' -i --tac '..qs)
+    local r = io.popen('2>nul '..history..' | '..get_fzf('FZF_CTRL_R_OPTS', del_binding)..' -i --tac '..qs)
     if not r then
         rl_buffer:ding()
         return
