@@ -57,8 +57,8 @@
 -- To get file icons to show up in FZF, you can use DIRX v0.9 or newer with
 -- Clink v1.6.5, and set the FZF env vars like this:
 --
---      set FZF_CTRL_T_COMMAND=dirx.exe /b /s /X:d /a:-s-h --icons=always --utf8 $dir
---      set FZF_ALT_C_COMMAND=dirx.exe /b /s /X:d /a:d-s-h --icons=always --utf8 $dir
+--      set FZF_CTRL_T_COMMAND=dirx.exe /b /s /X:d /a:-s-h --bare-relative --icons=always --utf8 $dir
+--      set FZF_ALT_C_COMMAND=dirx.exe /b /s /X:d /a:d-s-h --bare-relative --icons=always --utf8 $dir
 --      set FZF_ICON_WIDTH=2
 --
 -- If you want it to recurse into hidden directories, then remove the `/X:d`
