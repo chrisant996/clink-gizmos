@@ -242,7 +242,11 @@ end
 
 local function replace_dir(str, word)
     if word then
-        word = maybe_quote(rl.expandtilde(word))
+        word = rl.expandtilde(word)
+        if not os.isdir(word) then
+            word = word.."*"
+        end
+        word = maybe_quote(word)
     end
     return str:gsub('$dir', word or '.')
 end
