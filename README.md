@@ -42,6 +42,12 @@ Script Name | Description
 [vscode_shell_integration.lua](vscode_shell_integration.lua) | Automatically enables shell integration for VSCode embedded terminal windows.
 [z_dir_popup.lua](z_dir_popup.lua) | If you use [z.lua](https://github.com/skywind3000/z.lua) then this provides a popup listing of directories from z.  See usage information in the script file for details.
 
+## Setting up FZF
+
+Refer to the README at [clink-fzf](https://github.com/chrisant996/clink-fzf).
+
+You can have file icons in fzf completion lists, if you use Clink v1.6.5 or newer and [DirX](https://github.com/chrisant996/dirx) v0.8 or newer and configure a few FZF environment variables.  See [Icons in FZF](https://github.com/chrisant996/clink-fzf/#icons-in-fzf) for details.
+
 # Rough Prototype Features
 
 Some of the included scripts are rough prototypes that can be useful, but are not fully functional and/or have potentially significant or dangerous limitations.  These prototype scripts are **disabled by default**, for safety and to avoid interference.  See below for information about each, and for how to enable each script if you wish.

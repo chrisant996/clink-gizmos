@@ -37,12 +37,32 @@
 --          FZF_CTRL_R_OPTS     = fzf options for fzf_history() function.
 --          FZF_ALT_C_OPTS      = fzf options for fzf_directory() function.
 --          FZF_BINDINGS_OPTS   = fzf options for fzf_bindings() function.
---          FZF_COMPLETE_OPTS   = fzf options for fzf_complete() and fzf_complete_force() and fzf_selectcomplete() functions.
+--          FZF_COMPLETE_OPTS   = fzf options for fzf_complete() and
+--                                fzf_complete_force() and fzf_selectcomplete()
+--                                functions.
 --
---          FZF_CTRL_T_COMMAND  = command to run for collecting files for fzf_file() function.
---          FZF_ALT_C_COMMAND   = command to run for collecting directories for fzf_directory() function.
+--          FZF_CTRL_T_COMMAND  = command to run for collecting files for
+--                                fzf_file() function.
+--          FZF_ALT_C_COMMAND   = command to run for collecting directories for
+--                                fzf_directory() function.
 --
---          FZF_COMPLETION_DIR_COMMANDS = commands that should complete only directories, separated by spaces.
+--          FZF_COMPLETION_DIR_COMMANDS = commands that should complete only
+--                                        directories, separated by spaces.
+--
+--          FZF_ICON_WIDTH      = number of cells/spaces to strip from the
+--                                beginning of each match, to remove icons that
+--                                inserted by customized FZF_CTRL_T_COMMAND and
+--                                FZF_ALT_C_COMMAND commands.
+--
+-- To get file icons to show up in FZF, you can use DIRX v0.8 or newer with
+-- Clink v1.6.5, and set the FZF env vars like this:
+--
+--      set FZF_CTRL_T_COMMAND=dirx.exe /b /s /a:-s --icons=always --utf8 $dir
+--      set FZF_ALT_C_COMMAND=dirx.exe /b /s /a:d-s --icons=always --utf8 $dir
+--      set FZF_ICON_WIDTH=2
+--
+-- DIRX is available at https://github.com/chrisant996/dirx
+-- Clink is available at https://github.com/chrisant996/clink
 --
 -- luacheck: pop
 
@@ -91,6 +111,32 @@ local function add_help_desc(macro, desc)
     if rl.describemacro then
         rl.describemacro(macro, desc)
     end
+end
+
+local function maybe_strip_icon(str)
+    local width = os.getenv("FZF_ICON_WIDTH")
+    if width then
+        width = tonumber(width)
+        if width and width > 0 then
+            if unicode.iter then
+                local iter = unicode.iter(str)
+                local c = iter()
+                if c then
+                    return str:sub(#c + (width - 1) + 1)
+                end
+            else
+                if str:byte() == 32 then
+                    return str:sub(width + 1)
+                elseif width > 1 then
+                    local tmp = str:match("^[^ ]+(.*)$")
+                    if tmp then
+                        return tmp:sub(width)
+                    end
+                end
+            end
+        end
+    end
+    return str
 end
 
 local function make_query_string(rl_buffer)
@@ -310,6 +356,7 @@ local function fzf_recursive(rl_buffer, line_state, search, dirs_only) -- luache
     if not match then
         return
     end
+    match = maybe_strip_icon(match)
 
     -- Insert match.
     local use_quote = ((has_quote or need_quote(match)) and quote) or ''
@@ -430,6 +477,7 @@ function fzf_file(rl_buffer, line_state)
     r:close()
 
     if #str > 0 then
+        str = maybe_strip_icon(str)
         rl_buffer:insert(maybe_quote(str))
     end
 
@@ -454,6 +502,7 @@ function fzf_directory(rl_buffer, line_state)
     r:close()
 
     if #str > 0 then
+        str = maybe_strip_icon(str)
         rl_buffer:beginundogroup()
         rl_buffer:remove(0, -1)
         rl_buffer:insert('cd /d '..str)
@@ -522,8 +571,16 @@ local function filter_matches(matches, completion_type, filename_completion_desi
     end
 
     -- Write matches to the write pipe.
+    local which = {}
     for _,m in ipairs(matches) do
-        w:write(m.match..'\n')
+        if m.display and console.plaintext then
+            local text = console.plaintext(m.display)
+            table.insert(which, text)
+            w:write(text..'\n')
+        else
+            table.insert(which, m.match)
+            w:write(m.match..'\n')
+        end
     end
     w:close()
 
@@ -534,8 +591,8 @@ local function filter_matches(matches, completion_type, filename_completion_desi
         if not line then
             break
         end
-        for _,m in ipairs(matches) do
-            if m.match == line then
+        for i,m in ipairs(matches) do
+            if line == which[i] then
                 table.insert(ret, m)
             end
         end
