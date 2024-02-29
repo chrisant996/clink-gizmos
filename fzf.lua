@@ -255,14 +255,20 @@ local function escape_quotes(text)
 end
 
 local function replace_dir(str, word)
+    if word == '.' then
+        word = nil
+    end
     if word then
+        if word:find('^%.[/\\]') then
+            word = word:match('^%.[/\\]+(.*)$')
+        end
         word = rl.expandtilde(word)
         if not os.isdir(word) then
             word = word.."*"
         end
         word = maybe_quote(word)
     end
-    return str:gsub('$dir', word or '.')
+    return str:gsub('$dir', word or '')
 end
 
 local function get_word_at_cursor(line_state)
