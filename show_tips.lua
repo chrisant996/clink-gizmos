@@ -49,7 +49,7 @@ local function open_seen_tips_file(mode, deny)
 end
 
 local function clear_seen_file()
-    local f = open_seen_tips_file("w+", "rw")
+    local f = open_seen_tips_file("w", "rw")
     if f then
         f:close()
     end
@@ -58,9 +58,10 @@ end
 
 local function load_seen_tips()
     local seen = {}
-    -- Opening for "w" then "r" ensures the file exists before trying to read
-    -- it, otherwise it will retry for 2 seconds when the file doesn't exist.
-    local f = open_seen_tips_file("w", "w")
+    -- Opening for "a" then "r" ensures the file exists (without clearing it)
+    -- before trying to read it, otherwise it will retry for 2 seconds when the
+    -- file doesn't exist.
+    local f = open_seen_tips_file("a", "w")
     if f then
         f:close()
         f = open_seen_tips_file("r", "w")
