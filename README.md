@@ -42,11 +42,22 @@ Script Name | Description
 [vscode_shell_integration.lua](vscode_shell_integration.lua) | Automatically enables shell integration for VSCode embedded terminal windows.
 [z_dir_popup.lua](z_dir_popup.lua) | If you use [z.lua](https://github.com/skywind3000/z.lua) then this provides a popup listing of directories from z.  See usage information in the script file for details.
 
-## Setting up FZF
+# Setting up FZF
 
-Refer to the README at [clink-fzf](https://github.com/chrisant996/clink-fzf).
+Clink-gizmos includes clink-fzf, which provides optional integration with the [FZF](https://github.com/junegunn/fzf) fuzzy finder tool for filtering completions, directories, history, etc.
 
-You can have file icons in fzf completion lists, if you use Clink v1.6.5 or newer and [DirX](https://github.com/chrisant996/dirx) v0.9 or newer and configure a few FZF environment variables.  See [Icons in FZF](https://github.com/chrisant996/clink-fzf/#icons-in-fzf) for details.
+To set up FZF integration, refer to the README at [clink-fzf](https://github.com/chrisant996/clink-fzf).
+
+You can also include file icons in fzf completion lists, if you use Clink v1.6.5 or newer and [DirX](https://github.com/chrisant996/dirx) v0.9 or newer and configure a few FZF environment variables.  See [Icons in FZF](https://github.com/chrisant996/clink-fzf/#icons-in-fzf) for details.
+
+<a name="matchicons"></a>
+
+# Setting up Icons in File Completions
+
+If you're using a [Nerd Font](https://nerdfonts.com), then you can run `clink set matchicons.enable true` to enable showing file icons for file and directory completions.  And some other kinds of completions may also add icons (for example the git completions in [clink-completions](https://github.com/vladimir-kotikov/clink-completions) can show icons for git branches and git tags, etc).
+
+If you're not using a Nerd Font yet, consider checking out some of the available fonts.  Here are a few especially nice ones for shell windows or file editors:
+-
 
 # Rough Prototype Features
 
