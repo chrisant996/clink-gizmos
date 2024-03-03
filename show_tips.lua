@@ -159,6 +159,8 @@ local function collect_tips(external, seen)
                {text="The saved command history can include time stamps by running 'clink set history.time_stamp true'.\nSee https://chrisant996.github.io/clink/clink.html#history-timestamps for more info."})
     insert_tip("set:history.dupe_mode", true,
                {text="The 'history.dupe_mode' setting controls how duplicate entries are saved in the command history.\nSee https://chrisant996.github.io/clink/clink.html#history_dupe_mode for more info."})
+    insert_tip("set:matchicons.enable", not settings.get("matchicons.enable"),
+               {text="If you're using a Nerd Font (https://nerdfonts.com) the 'matchicons.enable' setting can show file icons next to match completions.\nSee https://github.com/chrisant996/clink-gizmos/#matchicons for more info."})
     -- TODO: history expansion.
     -- TODO: history.shared setting.
     -- TODO: match.wild setting.
