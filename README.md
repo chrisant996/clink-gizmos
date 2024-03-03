@@ -56,8 +56,16 @@ You can also include file icons in fzf completion lists, if you use Clink v1.6.5
 
 If you're using a [Nerd Font](https://nerdfonts.com), then you can run `clink set matchicons.enable true` to enable showing file icons for file and directory completions.  And some other kinds of completions may also add icons (for example the git completions in [clink-completions](https://github.com/vladimir-kotikov/clink-completions) can show icons for git branches and git tags, etc).
 
-If you're not using a Nerd Font yet, consider checking out some of the available fonts.  Here are a few especially nice ones for shell windows or file editors:
--
+If you're not using a Nerd Font yet, consider checking out some of the available fonts.  Here are a few recommended ones for shell windows or file editors:
+- [Meslo Nerd Font patched by romkatv](https://github.com/romkatv/powerlevel10k/blob/master/font.md):  this is a patched version of Meslo Nerd Font.
+- [Caskaydia Cove Nerd Font](https://github.com/ryanoasis/nerd-fonts/releases/):  this is a patched version of Cascadia Code that adds many icon characters.
+- [FiraCode Nerd Font](https://github.com/ryanoasis/nerd-fonts/releases/):  this is a patched version of Fira Code that adds Powerline symbols and many icon characters.
+- [RobotoMono Nerd Font](https://github.com/ryanoasis/nerd-fonts/releases/):  this is a patched version of Roboto Mono that adds Powerline symbols and many icon characters.
+- And there are many other fonts to have fun with -- enjoy!
+
+> **Note:** If you're using an older "v2" nerd font, then set the environment variable `DIRX_NERD_FONTS_VERSION=2` to tell matchicons to use icons compatible with older font versions.
+>
+> For example by adding `set DIRX_NERD_FONTS_VERSION=2` into a startup .bat or .cmd script, or using Windows Settings to set the environment variable.
 
 # Rough Prototype Features
 
