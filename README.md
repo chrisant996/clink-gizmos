@@ -63,7 +63,7 @@ If you're not using a Nerd Font yet, consider checking out some of the available
 - [RobotoMono Nerd Font](https://github.com/ryanoasis/nerd-fonts/releases/):  this is a patched version of Roboto Mono that adds Powerline symbols and many icon characters.
 - And there are many other fonts to have fun with -- enjoy!
 
-> **Note:** If you're using an older "v2" nerd font, then set the environment variable `DIRX_NERD_FONTS_VERSION=2` to tell matchicons to use icons compatible with older font versions.
+> **Note:** If some of the icons look wrong, you might be using an older "v2" nerd font.  In that case, you can set the environment variable `DIRX_NERD_FONTS_VERSION=2` to tell matchicons.lua to use icons compatible with "v2" nerd fonts.
 >
 > For example by adding `set DIRX_NERD_FONTS_VERSION=2` into a startup .bat or .cmd script, or using Windows Settings to set the environment variable.
 
