@@ -357,6 +357,20 @@ local function is_dir_command(line_state)
     end
 end
 
+local function insert_match(rl_buffer, first, last, has_quote, match)
+    match = maybe_strip_icon(match)
+    local quote = has_quote or '"'
+    local use_quote = ((has_quote or need_quote(match)) and quote) or ''
+    rl_buffer:beginundogroup()
+    rl_buffer:remove(first, last + 1)
+    rl_buffer:setcursor(first)
+    rl_buffer:insert(use_quote)
+    rl_buffer:insert(match)
+    rl_buffer:insert(use_quote)
+    rl_buffer:insert(' ')
+    rl_buffer:endundogroup()
+end
+
 local function fzf_recursive(rl_buffer, line_state, search, dirs_only) -- luacheck: no unused
     local dir, word
     dir = path.getdirectory(search)
@@ -370,7 +384,6 @@ local function fzf_recursive(rl_buffer, line_state, search, dirs_only) -- luache
     end
 
     local first, last, has_quote, delimit = get_word_insert_bounds(line_state) -- luacheck: no unused
-    local quote = has_quote or '"'
 
     local r = io.popen('2>nul '..command..' | '..get_fzf('FZF_COMPLETE_OPTS')..' -q "'..word..'"')
     if not r then
@@ -391,21 +404,9 @@ local function fzf_recursive(rl_buffer, line_state, search, dirs_only) -- luache
     end
     r:close()
 
-    if not match then
-        return
+    if match then
+        insert_match(rl_buffer, first, last, has_quote, match)
     end
-    match = maybe_strip_icon(match)
-
-    -- Insert match.
-    local use_quote = ((has_quote or need_quote(match)) and quote) or ''
-    rl_buffer:beginundogroup()
-    rl_buffer:remove(first, last + 1)
-    rl_buffer:setcursor(first)
-    rl_buffer:insert(use_quote)
-    rl_buffer:insert(match)
-    rl_buffer:insert(use_quote)
-    rl_buffer:insert(' ')
-    rl_buffer:endundogroup()
 end
 
 -- luacheck: globals fzf_complete_internal
@@ -508,6 +509,9 @@ function fzf_file(rl_buffer, line_state)
     local dir = get_word_at_cursor(line_state)
     local command = get_ctrl_t_command(dir)
 
+    local first, last, has_quote, delimit = get_word_insert_bounds(line_state) -- luacheck: no unused
+    local quote = has_quote or '"'
+
     local r = io.popen(command..' 2>nul | '..get_fzf('FZF_CTRL_T_OPTS')..' -i -m')
     if not r then
         rl_buffer:ding()
@@ -520,8 +524,7 @@ function fzf_file(rl_buffer, line_state)
     r:close()
 
     if #str > 0 then
-        str = maybe_strip_icon(str)
-        rl_buffer:insert(maybe_quote(str))
+        insert_match(rl_buffer, first, last, has_quote, str)
     end
 
     rl_buffer:refreshline()
