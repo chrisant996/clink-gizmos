@@ -119,6 +119,20 @@ local function add_help_desc(macro, desc)
     end
 end
 
+local function need_cd_drive(dir)
+    local drive = path.getdrive(dir)
+    if drive then
+        local cwd = os.getcwd()
+        if cwd then
+            local cwd_drive = path.getdrive(cwd)
+            if cwd_drive and cwd_drive:lower() == drive:lower() then
+                return
+            end
+        end
+    end
+    return drive
+end
+
 local function maybe_strip_icon(str)
     local width = os.getenv("FZF_ICON_WIDTH")
     if width then
@@ -534,7 +548,12 @@ function fzf_directory(rl_buffer, line_state)
         str = maybe_strip_icon(str)
         rl_buffer:beginundogroup()
         rl_buffer:remove(0, -1)
-        rl_buffer:insert('cd /d '..str)
+        local drive = need_cd_drive(str)
+        if drive then
+            rl_buffer:insert(drive..' & cd '..str)
+        else
+            rl_buffer:insert('cd '..str)
+        end
         rl_buffer:endundogroup()
         rl_buffer:refreshline()
         rl.invokecommand('accept-line')

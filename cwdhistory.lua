@@ -496,11 +496,33 @@ clink.oninject(function ()
 end)
 
 --------------------------------------------------------------------------------
+local function need_cd_drive(dir)
+    local drive = path.getdrive(dir)
+    if drive then
+        local cwd = os.getcwd()
+        if cwd then
+            local cwd_drive = path.getdrive(cwd)
+            if cwd_drive and cwd_drive:lower() == drive:lower() then
+                return
+            end
+        end
+    end
+    return drive
+end
+
+--------------------------------------------------------------------------------
 clink.onprovideline(function ()
     if restore_dir then
         local dir = restore_dir
+        local drive = need_cd_drive(dir)
         restore_dir = nil
-        return "  cd /d " .. dir
+        -- Ideally this could use CD /D, but that only works if command
+        -- extensions are enabled.
+        if drive then
+            return "  " .. drive .. " & cd " .. dir
+        else
+            return "  cd " .. dir
+        end
     end
 end)
 

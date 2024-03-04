@@ -25,6 +25,20 @@ if rl.describemacro then
     rl.describemacro("luafunc:z_dir_popup", "Show a popup to pick from a directory known to z, and then change to the directory") -- luacheck: no max line length
 end
 
+local function need_cd_drive(dir)
+    local drive = path.getdrive(dir)
+    if drive then
+        local cwd = os.getcwd()
+        if cwd then
+            local cwd_drive = path.getdrive(cwd)
+            if cwd_drive and cwd_drive:lower() == drive:lower() then
+                return
+            end
+        end
+    end
+    return drive
+end
+
 function z_dir_popup(rl_buffer) -- luacheck: no global
     local z = os.getalias("z")
     if z then
@@ -69,7 +83,12 @@ function z_dir_popup(rl_buffer) -- luacheck: no global
     else
         rl_buffer:remove(1, -1)
         rl_buffer:setcursor(1)
-        rl_buffer:insert("  cd /d " .. dir)
+        local drive = need_cd_drive(dir)
+        if drive then
+            rl_buffer:insert("  " .. drive .. " & cd " .. dir)
+        else
+            rl_buffer:insert("  cd " .. dir)
+        end
         rl.invokecommand("accept-line")
     end
 end
