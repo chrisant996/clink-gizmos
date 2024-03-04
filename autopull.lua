@@ -73,7 +73,7 @@ local function do_autopull(dirs)
         log_debug("AUTOPULL: "..dir)
         if os.chdir(dir) then
             -- Run git pull.
-            local command = "2>&1 gsdfgdsfgit pull --no-progress"
+            local command = "2>&1 git pull --no-progress"
             log_debug("AUTOPULL: "..command)
             local file, pclose = io.popenyield(command)
             if file then
