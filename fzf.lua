@@ -442,6 +442,20 @@ function fzf_complete(rl_buffer, line_state)
     fzf_complete_internal(rl_buffer, line_state, false)
 end
 
+-- luacheck: globals fzf_menucomplete
+add_help_desc("luafunc:fzf_menucomplete",
+              "Use fzf for completion after ** otherwise use 'menu-complete' command")
+function fzf_menucomplete(rl_buffer, line_state)
+    fzf_complete_internal(rl_buffer, line_state, false, "menu-complete")
+end
+
+-- luacheck: globals fzf_oldmenucomplete
+add_help_desc("luafunc:fzf_oldmenucomplete",
+              "Use fzf for completion after ** otherwise use 'old-menu-complete' command")
+function fzf_oldmenucomplete(rl_buffer, line_state)
+    fzf_complete_internal(rl_buffer, line_state, false, "old-menu-complete")
+end
+
 -- luacheck: globals fzf_selectcomplete
 add_help_desc("luafunc:fzf_selectcomplete",
               "Use fzf for completion after ** otherwise use 'clink-select-complete' command")
