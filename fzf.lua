@@ -509,7 +509,7 @@ function fzf_history(rl_buffer)
     if #str > 0 then
         rl_buffer:beginundogroup()
         rl_buffer:remove(0, -1)
-        rl_buffer:insert(str)
+        rl_buffer:insert(string.gsub(str, '^%s*%d+%s*(.-)$', '%1'))
         rl_buffer:endundogroup()
     end
 
