@@ -73,18 +73,19 @@ Some of the included scripts are rough prototypes that can be useful, but are no
 
 ## [fishcomplete.lua](fishcomplete.lua)
 
-_Disabled by default.  To enable it, set the global variable `clink_gizmos_fishcomplete = true` in one of your Lua scripts that gets loaded before the clink-gizmos directory._
+_Disabled by default.  To enable it, run `clink set fishcomplete.enable true`.
 
 When a command is typed and it does not have an argmatcher, then fishcomplete automatically checks if there is a .fish file by the same name in the same
-directory as the command program, or in the directory specified by the `fishcomplete.completions_dir` global variable.  If yes, then it attempts to parse the .fish file and create a Clink argmatcher from it.
+directory as the command program, or in an "autocomplete" directory below that, or in the directory specified by the `fishcomplete.completions_dir` setting
+(run `clink set fishcomplete.completions_dir` to configure it).  If yes, then it attempts to parse the .fish file and create a Clink argmatcher from it.
 
-The following global configuration variables in Lua control how this script functions:
+The following Clink settings control how this script functions:
 
-Variable | Value | Description
+Setting | Default | Description
 -|-|-
-`clink_gizmos_fishcomplete` | `true` or `false` | Set this to true to enable this script.  This script is disabled by default.
-`fishcomplete.banner` | `true` or `false` | Whether to show feedback at top of screen when loading fish completions.
-`fishcomplete.completions_dir` | A directory | Path to fish completions files.
+`fishcomplete.enable` | `false` | Set this to true to enable this script.  This script is disabled by default.
+`fishcomplete.banner` | `true` | By default fishcomplete shows feedback at the top of screen when loading .fish completion files.  Run `clink set fishcomplete.banner false` to disable the feedback.
+`fishcomplete.completions_dir` | none | A directory to search for .fish completion files.  Run `clink set fishcomplete.completions_dir` to configure it.
 
 > **Note:** The fishcomplete script does not yet handle the `-e`, `-p`, `-w`, or `-x` flags for the fish `complete` command.  It attempts to handle simple fish completion scripts, but it will likely malfunction with more sophisticated fish completion scripts.
 
