@@ -64,7 +64,7 @@ local match_oldflag = '^(%-[^ \t]+)([ \t=])'
 
 local function initopt(state, options, line)
     state._options = options
-    state._line = line .. " "
+    state._line = line.." "
 end
 
 local function getopt(state)
@@ -152,12 +152,14 @@ end
 --------------------------------------------------------------------------------
 -- Fish `complete` command parser.
 
+local function trim(s)
+    return s:gsub('^ +', ''):gsub(' +$', '')
+end
+
 local _command = {
     arg=true,
     func=function (state, arg)
-        if state.command ~= arg then
-            state.flags = nil
-        end
+        state.command = arg
     end
 }
 
@@ -165,9 +167,7 @@ local _path = {
     -- This approximates the -p flag.
     arg=true,
     func=function (state, arg)
-        if state.command ~= path.getbasename(arg) then
-            state.flags = nil
-        end
+        state.command = path.getbasename(arg)
     end
 }
 
@@ -176,8 +176,8 @@ local _condition = {
     func=function (state, arg)
         if arg == '__fish_use_subcommand' then -- luacheck: ignore 542
         else
-            state.flags = nil
-            state.failure = 'unrecognized condition "'..arg..'"'
+            state.failures = state.failures or {}
+            table.insert(state.failures, 'unrecognized condition "'..arg..'"')
         end
     end
 }
@@ -185,21 +185,36 @@ local _condition = {
 local _short_option = {
     arg=true,
     func=function (state, arg)
-        table.insert(state.flags, '-'..arg)
+        if not state.command then
+            state.failures = state.failures or {}
+            table.insert(state.failures, 'missing command for short option "-'..arg..'"')
+        else
+            table.insert(state.flags, '-'..arg)
+        end
     end
 }
 
 local _long_option = {
     arg=true,
     func=function (state, arg)
-        table.insert(state.flags, '--'..arg)
+        if not state.command then
+            state.failures = state.failures or {}
+            table.insert(state.failures, 'missing command for long option "--'..arg..'"')
+        else
+            table.insert(state.flags, '--'..arg)
+        end
     end
 }
 
 local _old_option = {
     arg=true,
     func=function (state, arg)
-        table.insert(state.flags, '-'..arg)
+        if not state.command then
+            state.failures = state.failures or {}
+            table.insert(state.failures, 'missing command for old option "-'..arg..'"')
+        else
+            table.insert(state.flags, '-'..arg)
+        end
     end
 }
 
@@ -213,12 +228,52 @@ local _description = {
 local _arguments = {
     arg=true,
     func=function (state, arg)
-        if not state.linked_parser then
-            state.linked_parser = clink.argmatcher()
-        end
-        -- TODO: handle quoted strings
-        for _,s in ipairs(string.explode(arg)) do
-            table.insert(state.matches, { match=s, type='arg' })
+        state.linked_parser = true
+        if arg:find('^%{') then
+            arg = arg:gsub('^%{(.*)}$', '%1')
+            local s1 = ''
+            local s2 = ''
+            local desc, quote
+            for i = 1, #arg do
+                local c = arg:sub(i, i)
+                if not desc then
+                    if c == '\t' then
+                        desc = true
+                        quote = false
+                    else
+                        s1 = s1..c
+                    end
+                else
+                    if esc then
+                        s2 = s2..c
+                        esc = nil
+                    elseif quote then
+                        if c == '\\' then
+                            esc = true
+                        elseif c == '\'' then
+                            quote = nil
+                        else
+                            s2 = s2..c
+                        end
+                    else
+                        if c == '\'' then
+                            quote = true
+                        elseif c == ',' then
+                            table.insert(state.matches, { match=trim(s1), desc=trim(s2) })
+                            s1 = ''
+                            s2 = ''
+                            desc = nil
+                        end
+                    end
+                end
+            end
+            if s1 ~= '' then
+                table.insert(state.matches, { match=trim(s1), desc=trim(s2) })
+            end
+        else
+            for _,s in ipairs(string.explode(arg)) do
+                table.insert(state.matches, { match=trim(s) })
+            end
         end
     end
 }
@@ -243,18 +298,14 @@ local _force_files = {
 
 local _require_parameter = {
     func=function (state, arg) -- luacheck: no unused
-        if not state.linked_parser then
-            state.linked_parser = clink.argmatcher()
-        end
+        state.linked_parser = true
     end
 }
 
 local _exclusive = {
     func=function (state, arg) -- luacheck: no unused
         state.nofiles = true
-        if not state.linked_parser then
-            state.linked_parser = clink.argmatcher()
-        end
+        state.linked_parser = true
     end
 }
 
@@ -288,8 +339,9 @@ local function parse_fish_completions(name, fish)
         return
     end
 
-    local parser = clink.argmatcher()
-    local state
+    local failures
+    local commands = {}
+    local state = {}
 
     local match_complete = '^complete[ \t]+'
 
@@ -305,60 +357,102 @@ local function parse_fish_completions(name, fish)
 
             initopt(state, options, line:gsub(match_complete, ''))
 
-            while true do
-                if not getopt(state) then
-                    if not state.flags then
-                        parser = nil
+            while getopt(state) do -- luacheck: ignore 542
+            end
+
+            commands[state.command] = commands[state.command] or {}
+
+            local lp
+            local lpname
+            if state.linked_parser then
+                local s1 = state.command:gsub('[^A-Za-z]', '')
+                local s2 = ''
+                for _,f in ipairs(state.flags) do
+                    if #s2 < #f then
+                        s2 = f
                     end
-                    break
+                end
+                s2 = s2:gsub('[^A-Za-z]', '')
+                if s2 == '' then
+                    state.failures = state.failures or {}
+                    table.insert(state.failures, 'missing flag')
+                    state.linked_parser = nil
+                else
+                    lpname = s1..'_'..s2
+                    if state.forcefiles or not state.nofiles then
+                        table.insert(state.matches, clink.filematches)
+                    end
+                    lp = state.matches or {}
+                    commands[state.command].links = commands[state.command].links or {}
+                    commands[state.command].links[lpname] = lp
                 end
             end
 
-            if not parser then
-                if state.failure then
-                    state.failure = state.failure..' on line '..tostring(i)
+            if state.failures then
+                failures = failures or {}
+                for _,f in ipairs(state.failures) do
+                    table.insert(failures, v..' on line '..tostring(i))
                 end
-                break
             end
 
             if (state.desc and #state.desc > 0) or state.linked_parser then
-                local descs = {}
+                local descs = commands[state.command].descs or {}
                 for _,f in ipairs(state.flags) do
                     local d = {}
                     if state.linked_parser then
                         table.insert(d, ' arg')
                     end
-                    table.insert(d, state.desc)
+                    table.insert(d, state.desc or '')
                     descs[f] = d
                 end
-                parser:adddescriptions(descs)
+                commands[state.command].descs = descs
             end
 
-            if state.linked_parser then
-                if state.forcefiles or not state.nofiles then
-                    table.insert(state.matches, clink.filematches)
+            local flags = commands[state.command].flags or {}
+            for _,f in ipairs(state.flags) do
+                local flag = { f }
+                if lpname and lp then
+                    table.insert(flag, lpname)
                 end
-                state.linked_parser:addarg(state.matches)
+                table.insert(flags, flag)
             end
-
-            if state.linked_parser then
-                for j = 1, #state.flags, 1 do
-                    state.flags[j] = state.flags[j] .. state.linked_parser
-                end
-            end
-
-            parser:addflags(state.flags)
+            commands[state.command].flags = flags
         end
     end
 
     file:close()
 
-    if not parser then
-        return nil, state.failure
-    end
+    return commands, failures
+end
 
-    clink.arg.register_parser(name, parser)
-    return true
+local function generate_completions(commands)
+    -- For each command.
+    for cname,c in pairs(commands) do
+        -- Make linked argmatchers.
+        local links = {}
+        if c.links then
+            for lname,l in pairs(c.links) do
+                local am = clink.argmatcher()
+                am:addarg(l)
+                links[lname] = am
+            end
+        end
+
+        -- Make command argmatcher.
+        local flags = {}
+        local am = clink.argmatcher(cname)
+        if c.descs then
+            am:adddescriptions(c.descs)
+        end
+        for _,f in ipairs(c.flags) do
+            if f[2] then
+                table.insert(flags, f[1]..links[f[2]])
+            else
+                table.insert(flags, f[1])
+            end
+        end
+        am:addflags(flags)
+    end
 end
 
 local function oncommand(line_state, info)
@@ -370,8 +464,8 @@ local function oncommand(line_state, info)
         if not os.isfile(fish) then
             fish = path.join(path.join(dir, 'autocomplete'), name..'.fish')
             if not os.isfile(fish) then
-                local completions_dir = settings.get("fishcomplete.completions_dir") or ""
-                if completions_dir == "" then
+                local completions_dir = settings.get('fishcomplete.completions_dir') or ''
+                if completions_dir == '' then
                     return
                 end
                 fish = path.join(completions_dir, name..'.fish')
@@ -381,8 +475,10 @@ local function oncommand(line_state, info)
             end
         end
 
-        local ok, failure = parse_fish_completions(name, fish)
-        if not settings.get("fishcomplete.banner") then
+        local commands, failures = parse_fish_completions(name, fish)
+        generate_completions(commands)
+
+        if not settings.get('fishcomplete.banner') then
             return
         end
 
@@ -390,14 +486,11 @@ local function oncommand(line_state, info)
         local restore = '\x1b[K\x1b[m\x1b[u'
 
         fish = path.getname(fish)
-        if ok then
+        if not failures then
             clink.print(top..'\x1b[0;48;5;56;1;97mCompletions loaded from "'..fish..'".'..restore, NONL)
         else
-            if failure then
-                failure = '; '..failure..'.'
-            else
-                failure = '.'
-            end
+            local failure = failures[1]
+            failure = failure and '; '..failure..'.' or '.'
             clink.print(top..'\x1b[0;48;5;52;1;97mFailed reading "'..fish..'"'..failure..restore, NONL)
         end
     end
