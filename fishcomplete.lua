@@ -34,6 +34,10 @@
 -- TODO: -e arg : `complete -c command -e cmpltn` erases completion "cmpltn" from "command".
 -- TODO: -w arg : `complete -c hub -w git` makes "hub" inherit the current state of "git" command completions.
 
+local standalone = clink and not clink.argmatcher and not clink.arg and true
+
+if not standalone then
+
 settings.add("fishcomplete.enable", false, "Auto-translate fish completion files",
     "When this is enabled and a command is typed that doesn't have an argmatcher,\n"..
     "then this automatically looks for a .fish file by the same name.  If found,\n"..
@@ -52,6 +56,8 @@ if not clink.oncommand then
     print('fishcomplete.lua requires a newer version of Clink; please upgrade.')
     return
 end
+
+end -- not standalone
 
 -- luacheck: globals NONL
 
@@ -423,6 +429,141 @@ local function parse_fish_completions(name, fish)
     file:close()
 
     return commands, failures
+end
+
+if standalone then
+    require('modules/dumpvar')
+
+    local function escape_string(s)
+        return s:gsub('(["\\])', '\\%1')
+    end
+
+    local function convert()
+        local red = '\x1b[91m'
+        local green = '\x1b[92m'
+        local norm = '\x1b[m'
+
+        local infile = arg[1]
+        local outfile = arg[2]
+
+        if not infile then
+            clink.print(red..'Missing input file.'..norm)
+            os.exit(1)
+        end
+
+        if not outfile then
+            local dir = path.getdirectory(infile)
+            local name = path.getbasename(infile)
+            outfile = path.join(dir, name)..'.lua'
+        end
+        if os.isdir(outfile) then
+            outfile = path.join(outfile, path.getbasename(infile)..'.lua')
+        end
+
+        local o, msg = io.open(outfile, 'w')
+        if not o then
+            msg = msg and '; '..msg or ''
+            msg = string.gsub(msg..'.', '%.+$', '.')
+            clink.print(red..'Error opening "'..outfile..'" for write'..msg..norm)
+            os.exit(1)
+        end
+
+        local commands, failures = parse_fish_completions(path.getbasename(infile), infile)
+
+        -- For each command.
+        local first = true
+        for cname,c in pairs(commands) do
+            if not first then
+                o:write('\n')
+            end
+
+            o:write('------------------------------------------------------------------------------\n')
+            o:write('-- '..cname:upper()..'\n')
+            o:write('\n')
+
+            if first then
+                first = nil
+                o:write('local function try_require(module)\n')
+                o:write('    local r\n')
+                o:write('    pcall(function() r = require(module) end)\n')
+                o:write('    return r\n')
+                o:write('end\n')
+                o:write('\n')
+                o:write('try_require("arghelper")\n')
+                o:write('\n')
+            end
+
+            -- Make linked argmatchers.
+            local links = {}
+            if c.links then
+                for lname,l in pairs(c.links) do
+                    local any_desc
+                    o:write('local '..lname..' = clink.argmatcher():addarg({')
+                    for i,arg in ipairs(l) do
+                        if i > 1 then
+                            o:write(', ')
+                        end
+                        o:write('"'..escape_string(arg.match)..'"')
+                        if arg.desc and arg.desc ~= '' then
+                            any_desc = true
+                        end
+                    end
+                    o:write('})')
+                    if any_desc then
+                        o:write(':adddescriptions({\n')
+                        for i,arg in ipairs(l) do
+                            if arg.desc and arg.desc ~= '' then
+                                o:write('  ["'..escape_string(arg.match)..'"] = "'..escape_string(arg.desc)..'",\n')
+                            end
+                        end
+                        o:write('})')
+                    end
+                    o:write('\n')
+                end
+                o:write('\n')
+            end
+
+            -- Make command argmatcher.
+            o:write('clink.argmatcher("'..cname..'")\n')
+            if c.descs then
+                o:write(':adddescriptions({\n')
+                for f,d in pairs(c.descs) do
+                    o:write('  ["'..f..'"] = { "'..d[1]..'"')
+                    if d[2] then
+                        o:write(', "'..escape_string(d[2])..'"')
+                    end
+                    o:write(' },\n')
+                    assert(not d[3])
+                end
+                o:write('})\n')
+            end
+            do
+                o:write(':addflags({\n')
+                for _,f in ipairs(c.flags) do
+                    o:write('  "'..f[1]..'"')
+                    if f[2] then
+                        o:write('..'..f[2])
+                    end
+                    o:write(',\n')
+                end
+                o:write('})\n')
+            end
+        end
+
+        o:close()
+
+        if failures then
+            clink.print(red..'Failure(s) while converting the completion script:'..norm)
+            for _,f in ipairs(failures) do
+                print(f)
+            end
+            os.exit(1)
+        else
+            clink.print(green..'Successful conversion.'..norm)
+        end
+    end
+
+    return convert()
 end
 
 local function generate_completions(commands)
