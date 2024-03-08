@@ -89,7 +89,8 @@ Setting | Default | Description
 `fishcomplete.banner` | `true` | By default fishcomplete shows feedback at the top of screen when loading .fish completion files.  Run `clink set fishcomplete.banner false` to disable the feedback.
 `fishcomplete.completions_dir` | none | An additional directory to search for .fish completion files.  Run `clink set fishcomplete.completions_dir` to configure it.
 
-> **Note:** The fishcomplete script does not yet handle the `-e`, `-p`, `-w`, or `-x` flags for the fish `complete` command.  It attempts to handle simple fish completion scripts, but it will likely malfunction with more sophisticated fish completion scripts.
+> **Note:** The fishcomplete script does not yet handle the `-e` or `-w` flags for the fish `complete` command.  It attempts to handle simple fish completion scripts, but it will likely malfunction with more sophisticated fish completion scripts.
+> It cannot handle the fish scripting language, apart from the "complete" command itself.
 
 ## [command_substitution.lua](command_substitution.lua)
 
