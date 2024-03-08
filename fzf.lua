@@ -524,7 +524,6 @@ function fzf_file(rl_buffer, line_state)
     local command = get_ctrl_t_command(dir)
 
     local first, last, has_quote, delimit = get_word_insert_bounds(line_state) -- luacheck: no unused
-    local quote = has_quote or '"'
 
     local r = io.popen(command..' 2>nul | '..get_fzf('FZF_CTRL_T_OPTS')..' -i -m')
     if not r then
