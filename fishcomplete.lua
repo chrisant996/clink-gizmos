@@ -181,6 +181,10 @@ local _condition = {
     arg=true,
     func=function (state, arg)
         if arg == '__fish_use_subcommand' then -- luacheck: ignore 542
+        elseif arg:find('__fish_contains_opt') then -- luacheck: ignore 542
+            -- For now, just always include the flag.
+            -- FUTURE: This could be supported by using the `onarg` callback
+            -- to inspect flags in the input line.
         else
             state.failures = state.failures or {}
             table.insert(state.failures, 'unrecognized condition "'..arg..'"')
@@ -231,11 +235,16 @@ local _description = {
     end
 }
 
+-- TODO: Support multi-line arguments, as in rg.fish.
+-- NOTE: The {..} globbing syntax is more complicated than I'm willing to
+-- support at this time.
 local _arguments = {
     arg=true,
     func=function (state, arg)
         state.linked_parser = true
-        if arg:find('^%{') then
+        if arg:find('^%#') then -- luacheck: ignore 542
+            -- Ignore comment lines.
+        elseif arg:find('^%{') then
             arg = arg:gsub('^%{(.*)}$', '%1')
             local s1 = ''
             local s2 = ''
@@ -397,7 +406,7 @@ local function parse_fish_completions(name, fish)
             if state.failures then
                 failures = failures or {}
                 for _,f in ipairs(state.failures) do
-                    table.insert(failures, v..' on line '..tostring(i))
+                    table.insert(failures, f..' on line '..tostring(i))
                 end
             end
 
@@ -528,7 +537,7 @@ if standalone then
             if c.descs then
                 o:write(':adddescriptions({\n')
                 for f,d in pairs(c.descs) do
-                    o:write('  ["'..f..'"] = { "'..d[1]..'"')
+                    o:write('  ["'..f..'"] = { "'..escape_string(d[1])..'"')
                     if d[2] then
                         o:write(', "'..escape_string(d[2])..'"')
                     end
