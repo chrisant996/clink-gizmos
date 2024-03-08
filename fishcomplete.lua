@@ -5,51 +5,52 @@
 --
 -- When a command is typed and it does not have an argmatcher, then fishcomplete
 -- automatically checks if there is a .fish file by the same name in the same
--- directory as the command program, or in the directory specified by the
--- fishcomplete.completions_dir global variable.  If yes, then it attempts to
--- parse the .fish file and create a Clink argmatcher from it.
+-- directory as the command program, or in an autocomplete subdirectory below
+-- it, or in the directory specified by the fishcomplete.completions_dir
+-- setting.  If yes, then it attempts to parse the .fish file and generate a
+-- Clink argmatcher from it.
 --
--- The following global configuration variables in Lua control how this script
--- functions:
+-- To enable it, run:
 --
---      clink_gizmos_fishcomplete
---              [true|false]  Set this to true to enable this script.  This
---              script is disabled by default.
+--      clink set fishcomplete.enable true
 --
---      fishcomplete.banner
---              [true|false]  Whether to show feedback at top of screen when
---              loading fish completions.
+-- If fishcomplete is enabled, then by default it shows feedback at the top of
+-- the screen when attempting to load .fish completion files.  If you want to
+-- disable the feedback, you can run "clink set fishcomplete.banner false".
 --
---      fishcomplete.completions_dir
---              [directory]  Path to fish completions files.
---
+-- You can optionally configure a directory containing .fish completion files by
+-- running "clink set fishcomplete.completions_dir c:\some\dir".  The specified
+-- directory is searched in additon to the directory containing the
+-- corresponding command program, and any autocomplete subdirectory below that
+-- directory.
 --
 -- NOTE:  The fishcomplete script does not yet handle the -e or -w flags for
 -- the fish "complete" command.  It attempts to handle simple fish completion
 -- scripts, but it will likely malfunction with more sophisticated fish
--- completion scripts.
+-- completion scripts.  It cannot handle the fish scripting language, apart from
+-- the "complete" command itself.
 
 -- TODO: -e     : `complete -c command -e` erases wrapped "command".
 -- TODO: -e arg : `complete -c command -e cmpltn` erases completion "cmpltn" from "command".
 -- TODO: -w arg : `complete -c hub -w git` makes "hub" inherit the current state of "git" command completions.
 
-if not clink_gizmos_fishcomplete then -- luacheck: no global
+settings.add("fishcomplete.enable", false, "Auto-translate fish completion files",
+    "When this is enabled and a command is typed that doesn't have an argmatcher,\n"..
+    "then this automatically looks for a .fish file by the same name.  If found,\n"..
+    "it attempts to parse the .fish file and generate a Clink argmatcher from it.")
+settings.add("fishcomplete.banner", true, "Show feedback when loading .fish files")
+settings.add("fishcomplete.completions_dir", "", "Path to .fish completion files",
+    "This specifies a directory to search for .fish completion files.  This is in\n"..
+    "addition to the directory containing the corresponding command program, and\n"..
+    "any autocomplete subdirectory below that directory.")
+
+if not settings.get("fishcomplete.enable") then
     return
 end
 
 if not clink.oncommand then
     print('fishcomplete.lua requires a newer version of Clink; please upgrade.')
     return
-end
-
---------------------------------------------------------------------------------
--- Global config variables (set them in a separate Lua script, e.g. in your
--- Clink profile directory).
-
--- luacheck: globals fishcomplete
-fishcomplete = fishcomplete or {}
-if fishcomplete.banner == nil then
-    fishcomplete.banner = true
 end
 
 -- luacheck: globals NONL
@@ -63,7 +64,7 @@ local match_oldflag = '^(%-[^ \t]+)([ \t=])'
 
 local function initopt(state, options, line)
     state._options = options
-    state._line = line
+    state._line = line .. " "
 end
 
 local function getopt(state)
@@ -367,10 +368,13 @@ local function oncommand(line_state, info)
 
         local fish = path.join(dir, name..'.fish')
         if not os.isfile(fish) then
-            if not fishcomplete.completions_dir then
-                return
-            else
-                fish = path.join(fishcomplete.completions_dir, name..'.fish')
+            fish = path.join(path.join(dir, 'autocomplete'), name..'.fish')
+            if not os.isfile(fish) then
+                local completions_dir = settings.get("fishcomplete.completions_dir") or ""
+                if completions_dir == "" then
+                    return
+                end
+                fish = path.join(completions_dir, name..'.fish')
                 if not os.isfile(fish) then
                     return
                 end
@@ -378,7 +382,7 @@ local function oncommand(line_state, info)
         end
 
         local ok, failure = parse_fish_completions(name, fish)
-        if not fishcomplete.banner then
+        if not settings.get("fishcomplete.banner") then
             return
         end
 
