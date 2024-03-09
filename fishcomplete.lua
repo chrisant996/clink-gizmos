@@ -725,7 +725,7 @@ local function generate_completions(commands)
         if c.conditions then
             local conditions = c.conditions
             flags.onarg = onarg_contains_opt
-            table.insert(flags, function (word, word_index, line_state, match_builder, user_data) -- luacheck: no unused)
+            table.insert(flags, function (word, word_index, line_state, match_builder, user_data) -- luacheck: no unused
                 clink.onfiltermatches(function (matches)
                     return do_filter(matches, conditions, user_data)
                 end)
