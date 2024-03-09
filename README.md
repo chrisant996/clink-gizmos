@@ -76,18 +76,18 @@ Some of the included scripts are rough prototypes that can be useful, but are no
 _Disabled by default.  To enable it, run `clink set fishcomplete.enable true`._
 
 When a command is typed and it does not have an argmatcher, then fishcomplete automatically checks if there is a .fish file by the same name in the same
-directory as the command program or in an "autocomplete" directory below that.  If yes, then it attempts to parse the .fish file and create a Clink argmatcher from it.
+directory as the command program or in an "autocomplete" or "complete" directory below that.  If yes, then it attempts to parse the .fish file and create a Clink argmatcher from it.
 
-You can configure an additional directory containing .fish completion files by running `clink set fishcomplete.completions_dir` with a directory name.  This directory
-is searched last, if a .fish script isn't found in the same directory as the command program or in an "autocomplete" directory below that.
+You can configure an additional directory containing *.fish completion files by running `clink set fishcomplete.completions_dir` with a directory name.
+This directory is searched last, if a .fish script isn't found by the default search strategy.
 
 The following Clink settings control how this script functions:
 
 Setting | Default | Description
 -|-|-
 `fishcomplete.enable` | `false` | This script is disabled by default.  Run `clink set fishcomplete.enable true` to enable this script.
-`fishcomplete.banner` | `true` | By default fishcomplete shows feedback at the top of screen when loading .fish completion files.  Run `clink set fishcomplete.banner false` to disable the feedback.
-`fishcomplete.completions_dir` | none | An additional directory to search for .fish completion files.  Run `clink set fishcomplete.completions_dir` to configure it.
+`fishcomplete.banner` | `true` | By default fishcomplete shows feedback at the top of screen when loading *.fish completion files.  Run `clink set fishcomplete.banner false` to disable the feedback.
+`fishcomplete.completions_dir` | none | An additional directory to search for *.fish completion files.  Run `clink set fishcomplete.completions_dir` to configure it.
 
 > **Note:** The fishcomplete script does not yet handle the `-e` or `-w` flags for the fish `complete` command.  It attempts to handle simple fish completion scripts, but it will likely malfunction with more sophisticated fish completion scripts.
 > It cannot handle the fish scripting language, apart from the "complete" command itself.

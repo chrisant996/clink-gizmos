@@ -5,24 +5,23 @@
 --
 -- When a command is typed and it does not have an argmatcher, then fishcomplete
 -- automatically checks if there is a .fish file by the same name in the same
--- directory as the command program, or in an autocomplete subdirectory below
--- it, or in the directory specified by the fishcomplete.completions_dir
--- setting.  If yes, then it attempts to parse the .fish file and generate a
--- Clink argmatcher from it.
+-- directory as the command program, or in an autocomplete or complete
+-- subdirectory below it, or in the directory specified by the
+-- fishcomplete.completions_dir setting.  If yes, then it attempts to parse the
+-- .fish file and generate a Clink argmatcher from it.
 --
 -- To enable it, run:
 --
 --      clink set fishcomplete.enable true
 --
 -- If fishcomplete is enabled, then by default it shows feedback at the top of
--- the screen when attempting to load .fish completion files.  If you want to
+-- the screen when attempting to load *.fish completion files.  If you want to
 -- disable the feedback, you can run "clink set fishcomplete.banner false".
 --
--- You can optionally configure a directory containing .fish completion files by
--- running "clink set fishcomplete.completions_dir c:\some\dir".  The specified
--- directory is searched in additon to the directory containing the
--- corresponding command program, and any autocomplete subdirectory below that
--- directory.
+-- You can optionally configure a directory containing *.fish completion files
+-- by running "clink set fishcomplete.completions_dir c:\some\dir".  This
+-- directory is searched last, if a .fish file isn't found by the default search
+-- strategy.
 --
 -- NOTE:  The fishcomplete script does not yet handle the -e or -w flags for
 -- the fish "complete" command.  It attempts to handle simple fish completion
@@ -46,7 +45,7 @@ settings.add("fishcomplete.banner", true, "Show feedback when loading .fish file
 settings.add("fishcomplete.completions_dir", "", "Path to .fish completion files",
     "This specifies a directory to search for .fish completion files.  This is in\n"..
     "addition to the directory containing the corresponding command program, and\n"..
-    "any autocomplete subdirectory below that directory.")
+    "any autocomplete or complete subdirectory below that directory.")
 
 if not settings.get("fishcomplete.enable") then
     return
@@ -182,9 +181,25 @@ local _condition = {
     func=function (state, arg)
         if arg == '__fish_use_subcommand' then -- luacheck: ignore 542
         elseif arg:find('__fish_contains_opt') then -- luacheck: ignore 542
-            -- For now, just always include the flag.
-            -- FUTURE: This could be supported by using the `onarg` callback
-            -- to inspect flags in the input line.
+            local opt = arg:match('__fish_contains_opt%s+(.*)$')
+            if opt then
+                local conditions = {}
+                local t = string.explode(opt)
+                local short
+                for _,s in ipairs(t) do
+                    if s == '-s' then
+                        short = true
+                    elseif short then
+                        short = false
+                        table.insert(conditions, '-'..s)
+                    else
+                        table.insert(conditions, '--'..s)
+                    end
+                end
+                if conditions[1] then
+                    state.condition_contains_opt = conditions
+                end
+            end
         else
             state.failures = state.failures or {}
             table.insert(state.failures, 'unrecognized condition "'..arg..'"')
@@ -432,6 +447,14 @@ local function parse_fish_completions(name, fish)
                 table.insert(flags, flag)
             end
             commands[state.command].flags = flags
+
+            if state.condition_contains_opt then
+                local conditions = commands[state.command].conditions or {}
+                for _,f in ipairs(state.flags) do
+                    conditions[f] = state.condition_contains_opt
+                end
+                commands[state.command].conditions = conditions
+            end
         end
     end
 
@@ -481,6 +504,7 @@ if standalone then
 
         -- For each command.
         local first = true
+        local first_conditions = true
         for cname,c in pairs(commands) do
             if not first then
                 o:write('\n')
@@ -493,12 +517,52 @@ if standalone then
             if first then
                 first = nil
                 o:write('local function try_require(module)\n')
-                o:write('    local r\n')
-                o:write('    pcall(function() r = require(module) end)\n')
-                o:write('    return r\n')
+                o:write('  local r\n')
+                o:write('  pcall(function() r = require(module) end)\n')
+                o:write('  return r\n')
                 o:write('end\n')
                 o:write('\n')
                 o:write('try_require("arghelper")\n')
+                o:write('\n')
+            end
+
+            if c.conditions and first_conditions then
+                first_conditions = nil
+                -- IMPORTANT: Keep in sync with onarg_contains_opt().
+                o:write('local function onarg_contains_opt(arg_index, word, _, _, user_data)\n')
+                o:write('  if arg_index == 0 then\n')
+                o:write('    local present = user_data.present\n')
+                o:write('    if not present then\n')
+                o:write('      present = {}\n')
+                o:write('      user_data.present = present\n')
+                o:write('    end\n')
+                o:write('    present[word] = true\n')
+                o:write('  end\n')
+                o:write('end\n')
+                o:write('\n')
+                -- IMPORTANT: Keep in sync with do_filter().
+                o:write('local function do_filter(matches, conditions, user_data)\n')
+                o:write('  local ret = {}\n')
+                o:write('  local present = user_data.present or {}\n')
+                o:write('  for _,m in ipairs(matches) do\n')
+                o:write('    local test_list = conditions[m.match]\n')
+                o:write('    if test_list then\n')
+                o:write('      local ok\n')
+                o:write('      for _,test in ipairs(test_list) do\n')
+                o:write('        if present[test] then\n')
+                o:write('          ok = true\n')
+                o:write('          break\n')
+                o:write('        end\n')
+                o:write('      end\n')
+                o:write('      if not ok then\n')
+                o:write('        goto continue\n')
+                o:write('      end\n')
+                o:write('    end\n')
+                o:write('    table.insert(ret, m)\n')
+                o:write('::continue::\n')
+                o:write('  end\n')
+                o:write('  return ret\n')
+                o:write('end\n')
                 o:write('\n')
             end
 
@@ -532,6 +596,23 @@ if standalone then
                 o:write('\n')
             end
 
+            -- Make conditions table.
+            if c.conditions then
+                o:write(cname..'_conditions = {\n')
+                for k,values in pairs(c.conditions) do
+                    o:write('  ["'..k..'"] = { ')
+                    for i,value in ipairs(values) do
+                        if i > 1 then
+                            o:write(', ')
+                        end
+                        o:write('"'..escape_string(value)..'"')
+                    end
+                    o:write(' },\n')
+                end
+                o:write('}\n')
+                o:write('\n')
+            end
+
             -- Make command argmatcher.
             o:write('clink.argmatcher("'..cname..'")\n')
             if c.descs then
@@ -555,6 +636,10 @@ if standalone then
                     end
                     o:write(',\n')
                 end
+                if c.conditions then
+                    o:write('  onarg = onarg_contains_opt,\n')
+                    o:write('  function(_, _, _, _, user_data) clink.onfiltermatches(function(matches) return do_filter(matches, '..cname..'_conditions, user_data) end) end,\n')
+                end
                 o:write('})\n')
             end
         end
@@ -573,6 +658,42 @@ if standalone then
     end
 
     return convert()
+end
+
+-- IMPORTANT: Keep in sync with convert().
+local function onarg_contains_opt(arg_index, word, word_index, line_state, user_data) -- luacheck: no unused
+    if arg_index == 0 then
+        local present = user_data.present
+        if not present then
+            present = {}
+            user_data.present = present
+        end
+        present[word] = true
+    end
+end
+
+-- IMPORTANT: Keep in sync with convert().
+local function do_filter(matches, conditions, user_data)
+    local ret = {}
+    local present = user_data.present or {}
+    for _,m in ipairs(matches) do
+        local test_list = conditions[m.match]
+        if test_list then
+            local ok
+            for _,test in ipairs(test_list) do
+                if present[test] then
+                    ok = true
+                    break
+                end
+            end
+            if not ok then
+                goto continue
+            end
+        end
+        table.insert(ret, m)
+::continue::
+    end
+    return ret
 end
 
 local function generate_completions(commands)
@@ -601,6 +722,15 @@ local function generate_completions(commands)
                 table.insert(flags, f[1])
             end
         end
+        if c.conditions then
+            local conditions = c.conditions
+            flags.onarg = onarg_contains_opt
+            table.insert(flags, function (word, word_index, line_state, match_builder, user_data) -- luacheck: no unused)
+                clink.onfiltermatches(function (matches)
+                    return do_filter(matches, conditions, user_data)
+                end)
+            end)
+        end
         am:addflags(flags)
     end
 end
@@ -614,13 +744,16 @@ local function oncommand(line_state, info)
         if not os.isfile(fish) then
             fish = path.join(path.join(dir, 'autocomplete'), name..'.fish')
             if not os.isfile(fish) then
-                local completions_dir = settings.get('fishcomplete.completions_dir') or ''
-                if completions_dir == '' then
-                    return
-                end
-                fish = path.join(completions_dir, name..'.fish')
+                fish = path.join(path.join(dir, 'complete'), name..'.fish')
                 if not os.isfile(fish) then
-                    return
+                    local completions_dir = settings.get('fishcomplete.completions_dir') or ''
+                    if completions_dir == '' then
+                        return
+                    end
+                    fish = path.join(completions_dir, name..'.fish')
+                    if not os.isfile(fish) then
+                        return
+                    end
                 end
             end
         end
