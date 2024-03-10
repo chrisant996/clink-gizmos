@@ -263,7 +263,7 @@ local _arguments = {
             arg = arg:gsub('^%{(.*)}$', '%1')
             local s1 = ''
             local s2 = ''
-            local desc, quote
+            local desc, quote, esc
             for i = 1, #arg do
                 local c = arg:sub(i, i)
                 if not desc then
@@ -371,7 +371,7 @@ local function parse_fish_completions(name, fish)
 
     local failures
     local commands = {}
-    local state = {}
+    local state
 
     local match_complete = '^complete[ \t]+'
 
@@ -470,6 +470,29 @@ if standalone then
         return s:gsub('(["\\])', '\\%1')
     end
 
+    local function spairs(t, order)
+        local keys = {}
+        local num = 0
+        for k in pairs(t) do
+            num = num + 1
+            keys[num] = k
+        end
+
+        if order then
+            table.sort(keys, function(a,b) return order(t, a, b) end)
+        else
+            table.sort(keys)
+        end
+
+        local i = 0
+        return function()
+            i = i + 1
+            if keys[i] then
+                return keys[i], t[keys[i]]
+            end
+        end
+    end
+
     local function convert()
         local red = '\x1b[91m'
         local green = '\x1b[92m'
@@ -505,7 +528,7 @@ if standalone then
         -- For each command.
         local first = true
         local first_conditions = true
-        for cname,c in pairs(commands) do
+        for cname,c in spairs(commands) do
             if not first then
                 o:write('\n')
             end
@@ -516,6 +539,8 @@ if standalone then
 
             if first then
                 first = nil
+                o:write('-- luacheck: no max line length\n')
+                o:write('\n')
                 o:write('local function try_require(module)\n')
                 o:write('  local r\n')
                 o:write('  pcall(function() r = require(module) end)\n')
@@ -567,9 +592,8 @@ if standalone then
             end
 
             -- Make linked argmatchers.
-            local links = {}
             if c.links then
-                for lname,l in pairs(c.links) do
+                for lname,l in spairs(c.links) do
                     local any_desc
                     o:write('local '..lname..' = clink.argmatcher():addarg({')
                     for i,arg in ipairs(l) do
@@ -584,7 +608,7 @@ if standalone then
                     o:write('})')
                     if any_desc then
                         o:write(':adddescriptions({\n')
-                        for i,arg in ipairs(l) do
+                        for _,arg in ipairs(l) do
                             if arg.desc and arg.desc ~= '' then
                                 o:write('  ["'..escape_string(arg.match)..'"] = "'..escape_string(arg.desc)..'",\n')
                             end
@@ -599,7 +623,7 @@ if standalone then
             -- Make conditions table.
             if c.conditions then
                 o:write(cname..'_conditions = {\n')
-                for k,values in pairs(c.conditions) do
+                for k,values in spairs(c.conditions) do
                     o:write('  ["'..k..'"] = { ')
                     for i,value in ipairs(values) do
                         if i > 1 then
@@ -617,7 +641,7 @@ if standalone then
             o:write('clink.argmatcher("'..cname..'")\n')
             if c.descs then
                 o:write(':adddescriptions({\n')
-                for f,d in pairs(c.descs) do
+                for f,d in spairs(c.descs) do
                     o:write('  ["'..f..'"] = { "'..escape_string(d[1])..'"')
                     if d[2] then
                         o:write(', "'..escape_string(d[2])..'"')
@@ -638,7 +662,7 @@ if standalone then
                 end
                 if c.conditions then
                     o:write('  onarg = onarg_contains_opt,\n')
-                    o:write('  function(_, _, _, _, user_data) clink.onfiltermatches(function(matches) return do_filter(matches, '..cname..'_conditions, user_data) end) end,\n')
+                    o:write('  function(_, _, _, _, user_data) clink.onfiltermatches(function(matches) return do_filter(matches, '..cname..'_conditions, user_data) end) end,\n') -- luacheck: no max line length
                 end
                 o:write('})\n')
             end
