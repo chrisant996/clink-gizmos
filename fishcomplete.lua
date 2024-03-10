@@ -622,7 +622,7 @@ if standalone then
 
             -- Make conditions table.
             if c.conditions then
-                o:write(cname..'_conditions = {\n')
+                o:write('local '..cname..'__hide_unless = {\n')
                 for k,values in spairs(c.conditions) do
                     o:write('  ["'..k..'"] = { ')
                     for i,value in ipairs(values) do
@@ -662,7 +662,7 @@ if standalone then
                 end
                 if c.conditions then
                     o:write('  onarg = onarg_contains_opt,\n')
-                    o:write('  function(_, _, _, _, user_data) clink.onfiltermatches(function(matches) return do_filter(matches, '..cname..'_conditions, user_data) end) end,\n') -- luacheck: no max line length
+                    o:write('  function(_, _, _, _, user_data) clink.onfiltermatches(function(matches) return do_filter(matches, '..cname..'__hide_unless, user_data) end) end,\n') -- luacheck: no max line length
                 end
                 o:write('})\n')
             end
