@@ -1004,9 +1004,18 @@ local EXTENSION_ICONS =
     ["pdb"]                             = "PDB",
 }
 
+local function get_dir_name(dir)
+    dir = dir:gsub("[/\\]+$", "")
+    local name = path.getname(dir) or ""
+    if name == "" then
+        name = dir:match("[/\\]([^/\\]+)$") or ""
+    end
+    return name
+end
+
 local function get_dir_icon(name)
     name = name:gsub("[/\\]+$", "")
-    local icon_name = DIR_ICONS[path.getname(name)]
+    local icon_name = DIR_ICONS[get_dir_name(name)]
     if icon_name then
         return get_icon(icon_name)
     end
@@ -1097,7 +1106,7 @@ local function get_match_icon(m)
             end
             return icon
         elseif m.type:find("dir") then
-            local text = path.getname(m.match:gsub("[/\\]+$", ""))
+            local text = get_dir_name(m.match)
             local icon = get_dir_icon(text) or get_icon(m.type:find("link") and "FOLDER_LINK" or "FOLDER")
             return icon
         end
@@ -1127,7 +1136,7 @@ local function add_icons(matches, nobackfill)
                     end
                     text = m.display or text
                 elseif m.type:find("dir") then
-                    text = path.getname(m.match:gsub("[/\\]+$", ""))
+                    text = get_dir_name(m.match)
                     icon = get_dir_icon(text) or get_icon(m.type:find("link") and "FOLDER_LINK" or "FOLDER")
                     text = m.display or text.."\\"
                 else
@@ -1203,7 +1212,7 @@ matchicons.addicontomatch = function (m, icon, color)
             if m.type:find("file") then
                 text = m.display or path.getname(m.match)
             elseif m.type:find("dir") then
-                text = m.display or path.getname(m.match:gsub("[/\\]+$", "")).."\\"
+                text = m.display or get_dir_name(m.match).."\\"
             else
                 text = m.display or m.match
             end
