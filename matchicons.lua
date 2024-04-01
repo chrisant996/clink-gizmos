@@ -65,7 +65,7 @@ local NERDFONTICONS =
     CONFIG              = "",
     CSS3                = "",
     DATABASE            = "",
-    DIFF                = "",
+    DIFF                = "",
     DISK_IMAGE          = "",
     DOCKER              = "",
     DOCUMENT            = "",
@@ -165,7 +165,7 @@ local NERDFONTICONS =
 
     -- Directories.
     FOLDER_TRASH        = "",
-    FOLDER_CONTACTS     = "",
+    FOLDER_CONTACTS     = "󰉌",
     FOLDER_DESKTOP      = "",
     FOLDER_DOWNLOADS    = "󰉍",
     FOLDER_FAVORITES    = "󰚝",
@@ -257,6 +257,7 @@ local NERDFONTICONSv2 =
 {
     BINARY              = "",
     CALENDAR            = "",
+    DIFF                = "",
     DOCKER              = "",
     DOWNLOAD            = "",
     EMACS               = ____,
@@ -299,6 +300,7 @@ local NERDFONTICONSv2 =
     YARN                = ____,
 
     -- Directories.
+    FOLDER_CONTACTS     = "",
     FOLDER_DOWNLOADS    = "",
     FOLDER_FAVORITES    = "ﮛ",
     FOLDER_HOME         = "",
