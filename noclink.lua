@@ -5,7 +5,7 @@ local envname = "NOCLINK_DISABLE_PROMPT_FILTERS"
 
 -- Register a prompt filter that can disable prompt filtering.
 local noclink = clink.promptfilter(-999999999)
-function noclink:filter(prompt)
+function noclink:filter(prompt) -- luacheck: no unused
     if os.getenv(envname) then
         return prompt, false
     end
