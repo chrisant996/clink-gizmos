@@ -14,7 +14,7 @@ end
 -- Helper function to get the path to this Lua script file.
 local function get_script_dir()
     local dir
-    local info = debug.getinfo(2, "S")
+    local info = debug.getinfo(1, "S")
     if info and info.source then
         dir = path.getdirectory(info.source:sub(2))
     end
