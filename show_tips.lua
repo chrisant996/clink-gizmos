@@ -161,6 +161,8 @@ local function collect_tips(external, seen)
                {text="The 'history.dupe_mode' setting controls how duplicate entries are saved in the command history.\nSee https://chrisant996.github.io/clink/clink.html#history_dupe_mode for more info."})
     insert_tip("set:matchicons.enable", not settings.get("matchicons.enable"),
                {text="If you're using a Nerd Font (https://nerdfonts.com) the 'matchicons.enable' setting can show file icons next to match completions.\nSee https://github.com/chrisant996/clink-gizmos/#matchicons for more info."})
+    insert_tip("usage:popup_search_mode", true,
+               {early=true, category="usage", text="In popup lists you can filter by pressing F4, or you can make it the default by running 'clink set clink.popup_search_mode filter'.\nSee https://chrisant996.github.io/clink/clink.html#popupwindow for more info."})
     -- TODO: history expansion.
     -- TODO: history.shared setting.
     -- TODO: match.wild setting.
