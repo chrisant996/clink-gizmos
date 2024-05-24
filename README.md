@@ -2,7 +2,8 @@
 
 This is a collection of Lua scripts for use with [Clink](https://github.com/chrisant996/clink).
 
-> Note: This includes [clink-fzf](https://github.com/chrisant996/clink-fzf), so use either clink-gizmos or clink-fzf, but not both (using both results in duplication and warnings).  Clink-gizmos contains a collection of scripts, and clink-fzf contains a single script.
+> [!NOTE]
+> This includes [clink-fzf](https://github.com/chrisant996/clink-fzf), so use either clink-gizmos or clink-fzf, but not both (using both results in duplication and warnings).  Clink-gizmos contains a collection of scripts, and clink-fzf contains a single script.
 
 ## How To Install
 
@@ -19,7 +20,8 @@ The repo's root directory contains various useful scripts which are loaded when 
 
 The "modules" subdirectory contains helper scripts that are used by the scripts in the other directories.
 
-> **Note:** all completion scripts have moved to the [clink-completions](https://github.com/vladimir-kotikov/clink-completions) repo.
+> [!NOTE]
+> All completion scripts have moved to the [clink-completions](https://github.com/vladimir-kotikov/clink-completions) repo.
 
 # Features
 
@@ -65,7 +67,8 @@ If you're not using a Nerd Font yet, consider checking out some of the available
 - [RobotoMono Nerd Font](https://github.com/ryanoasis/nerd-fonts/releases/):  this is a patched version of Roboto Mono that adds Powerline symbols and many icon characters.
 - And there are many other fonts to have fun with -- enjoy!
 
-> **Note:** If some of the icons look wrong, you might be using an older "v2" nerd font.  In that case, you can set the environment variable `DIRX_NERD_FONTS_VERSION=2` to tell matchicons.lua to use icons compatible with "v2" nerd fonts.
+> [!TIP]
+> If some of the icons look wrong, you might be using an older "v2" nerd font.  In that case, you can set the environment variable `DIRX_NERD_FONTS_VERSION=2` to tell matchicons.lua to use icons compatible with "v2" nerd fonts.
 >
 > For example by adding `set DIRX_NERD_FONTS_VERSION=2` into a startup .bat or .cmd script, or using Windows Settings to set the environment variable.
 
@@ -91,7 +94,8 @@ Setting | Default | Description
 `fishcomplete.banner` | `true` | By default fishcomplete shows feedback at the top of screen when loading *.fish completion files.  Run `clink set fishcomplete.banner false` to disable the feedback.
 `fishcomplete.completions_dir` | none | An additional directory to search for *.fish completion files.  Run `clink set fishcomplete.completions_dir` to configure it.
 
-> **Note:** The fishcomplete script does not yet handle the `-e` or `-w` flags for the fish `complete` command.  It attempts to handle simple fish completion scripts, but it will likely malfunction with more sophisticated fish completion scripts.
+> [!NOTE]
+> The fishcomplete script does not yet handle the `-e` or `-w` flags for the fish `complete` command.  It attempts to handle simple fish completion scripts, but it will likely malfunction with more sophisticated fish completion scripts.
 > It cannot handle the fish scripting language, apart from the "complete" command itself.
 
 ## [command_substitution.lua](command_substitution.lua)
@@ -108,7 +112,8 @@ Variable | Value | Description
 -|-|-
 `clink_gizmos_command_substitution` | `true` or `false` | Set this global variable to true to enable this script.  This script is disabled by default.
 
-> **IMPORTANT WARNING:** This is a very simple and stupid implementation, and it does not (and cannot) work the same as bash.  It will not work quite as expected in many cases.  But if the limitations are understood and respected, then it can still be useful and powerful.
+> [!CAUTION]
+> This is a very simple and stupid implementation, and it does not (and cannot) work the same as bash.  It will not work quite as expected in many cases.  But if the limitations are understood and respected, then it can still be useful and powerful.
 
 Here are some of the limitations:
 
