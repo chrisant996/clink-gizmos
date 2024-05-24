@@ -24,7 +24,8 @@ if not clink.parseline then
 end
 
 if rl.describemacro then
-    rl.describemacro([["luafunc:toggle_short_path"]], "Toggle the word under the cursor between long and short path names")
+    rl.describemacro([["luafunc:toggle_short_path"]],
+                     "Toggle the word under the cursor between long and short path names")
 end
 
 if rl.getbinding then
