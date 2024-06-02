@@ -3,16 +3,18 @@
 This is a collection of Lua scripts for use with [Clink](https://github.com/chrisant996/clink).
 
 > [!NOTE]
-> This includes [clink-fzf](https://github.com/chrisant996/clink-fzf), so use either clink-gizmos or clink-fzf, but not both (using both results in duplication and warnings).  Clink-gizmos contains a collection of scripts, and clink-fzf contains a single script.
+> This includes [clink-fzf](https://github.com/chrisant996/clink-fzf), so you don't need both -- clink-gizmos contains a collection of scripts, and clink-fzf contains a single script.
 
 ## How To Install
 
 The easiest way to install it for use with your Clink is:
 
 1. Make sure you have [git](https://www.git-scm.com/downloads) installed.
-2. Clone this repo into a local directory via `git clone https://github.com/chrisant996/clink-gizmos local_directory`.
-3. Tell Clink to load scripts from the repo via `clink installscripts local_directory`.
+2. Clone this repo into a local directory via <code>git clone https://github.com/chrisant996/clink-gizmos <em>local_directory</em></code>.
+3. Tell Clink to load scripts from the repo via <code>clink installscripts <em>local_directory</em></code>.
 4. Start a new session of Clink.
+
+Get updates using `git pull` and normal git workflow.
 
 ## Files and Directories
 
