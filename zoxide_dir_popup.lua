@@ -72,7 +72,7 @@ function zoxide_dir_popup(rl_buffer) -- luacheck: no global
         return
     end
 
-    local dir, shifted = selected:match("^ *[0-9.]+ +(.+)$")
+    local dir = selected
     if not dir or dir == "" then
         rl_buffer:ding()
         return
