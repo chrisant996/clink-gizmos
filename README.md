@@ -47,6 +47,7 @@ Script Name | Description
 [toggle_short.lua](toggle_short.lua) | Adds a command to toggle the word under the cursor between long and short path names.  The default key binding is Ctrl-Alt-A.
 [vscode_shell_integration.lua](vscode_shell_integration.lua) | Automatically enables shell integration for VSCode embedded terminal windows.
 [z_dir_popup.lua](z_dir_popup.lua) | If you use [z.lua](https://github.com/skywind3000/z.lua) then this provides a popup listing of directories from z.  See usage information in the script file for details.
+[zoxide_dir_popup.lua](zoxide_dir_popup.lua) | If you use [zoxide](https://github.com/ajeetdsouza/zoxide) then this provides a popup listing of directories from zoxide.  See usage information in the script file for details.
 
 # Setting up FZF
 
