@@ -374,12 +374,15 @@ function dir_generator:generate(line_state, builder) -- luacheck: no unused
 
     if line_state:getwordcount() <= 1 then
         local restrict_drive
-        if not drive and path.getdirectory(word):sub(1, 1) == "\\" then
-            local fullword = os.getfullpathname(word)
-            if fullword and fullword ~= "" then
-                word = fullword
-                drive = path.getdrive(fullword)
-                restrict_drive = true
+        if not drive then
+            local dir = path.getdirectory(word)
+            if dir and dir:sub(1, 1) == "\\" then
+                local fullword = os.getfullpathname(word)
+                if fullword and fullword ~= "" then
+                    word = fullword
+                    drive = path.getdrive(fullword)
+                    restrict_drive = true
+                end
             end
         end
 
