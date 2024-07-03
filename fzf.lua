@@ -103,11 +103,6 @@ if not io.popenrw then
     return
 end
 
-local function get_source(where)
-    local info = debug.getinfo(where or 2, "S")
-    return info and info.source or nil
-end
-
 -- luacheck: globals fzf_loader_arbiter
 fzf_loader_arbiter = fzf_loader_arbiter or {}
 if fzf_loader_arbiter.initialized then
@@ -116,7 +111,8 @@ if fzf_loader_arbiter.initialized then
         msg = msg..' ('..fzf_loader_arbiter.loaded_source..')'
     end
     msg = msg..', but another copy got loaded later'
-    local source = get_source()
+    local info = debug.getinfo(1, "S")
+    local source = info and info.source or nil
     if source then
         msg = msg..' ('..source..')'
     end
@@ -1169,8 +1165,11 @@ fzf_loader_arbiter.ensure_initialized = function()
     create_generator()
     create_argmatcher()
 
+    local info = debug.getinfo(1, "S")
+    local source = info and info.source or nil
+
     fzf_loader_arbiter.initialized = true
-    fzf_loader_arbiter.loaded_source = get_source()
+    fzf_loader_arbiter.loaded_source = source
 end
 
 clink.onbeginedit(function ()
