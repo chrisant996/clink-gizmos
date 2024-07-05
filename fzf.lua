@@ -438,18 +438,25 @@ local function is_dir_command(line_state)
     end
 end
 
-local function insert_match(rl_buffer, first, last, has_quote, match)
-    match = maybe_strip_icon(match)
-    local quote = has_quote or '"'
-    local use_quote = ((has_quote or need_quote(match)) and quote) or ''
-    rl_buffer:beginundogroup()
-    rl_buffer:remove(first, last + 1)
-    rl_buffer:setcursor(first)
-    rl_buffer:insert(use_quote)
-    rl_buffer:insert(match)
-    rl_buffer:insert(use_quote)
-    rl_buffer:insert(' ')
-    rl_buffer:endundogroup()
+local function insert_matches(rl_buffer, first, last, has_quote, matches)
+    if matches and matches[1] then
+        local quote = has_quote or '"'
+
+        rl_buffer:beginundogroup()
+        rl_buffer:remove(first, last + 1)
+        rl_buffer:setcursor(first)
+
+        for _,match in ipairs(matches) do
+            match = maybe_strip_icon(match)
+            local use_quote = ((has_quote or need_quote(match)) and quote) or ''
+            rl_buffer:insert(use_quote)
+            rl_buffer:insert(match)
+            rl_buffer:insert(use_quote)
+            rl_buffer:insert(' ')
+        end
+
+        rl_buffer:endundogroup()
+    end
 end
 
 local function fzf_recursive(rl_buffer, line_state, search, dirs_only) -- luacheck: no unused
@@ -488,7 +495,7 @@ local function fzf_recursive(rl_buffer, line_state, search, dirs_only) -- luache
     r:close()
 
     if match then
-        insert_match(rl_buffer, first, last, has_quote, match)
+        insert_matches(rl_buffer, first, last, has_quote, { match })
     end
 end
 
@@ -648,14 +655,18 @@ function fzf_file(rl_buffer, line_state)
         return
     end
 
-    local str = r:read('*line')
-    str = str and str:gsub('[\r\n]+', ' ') or ''
-    str = str:gsub(' +$', '')
+    local matches = {}
+    for str in r:lines() do
+        str = str and str:gsub('[\r\n]+', ' ') or ''
+        str = str:gsub(' +$', '')
+        if #str > 0 then
+            table.insert(matches, str)
+        end
+    end
+
     r:close()
 
-    if #str > 0 then
-        insert_match(rl_buffer, first, last, has_quote, str)
-    end
+    insert_matches(rl_buffer, first, last, has_quote, matches)
 
     rl_buffer:refreshline()
 end
