@@ -5,8 +5,8 @@
 -- FZF is available from https://github.com/junegunn/fzf
 --
 -- Either put fzf.exe in a directory listed in the system PATH environment
--- variable, or run 'clink set fzf.exe_location <directoryname>' to tell Clink
--- where to find fzf.exe.
+-- variable, or run 'clink set fzf.exe_location <put_full_exe_name_here>' to
+-- tell Clink where to find fzf.exe (for example c:\tools\fzf.exe).
 --
 -- To use FZF integration, you may set key bindings manually in your .inputrc
 -- file, or you may use the default key bindings.  To use the default key
@@ -43,7 +43,9 @@
 --                              fzf documentation on --height for values.
 --
 --      fzf.exe_location        Specifies the location of fzf.exe if not in the
---                              system PATH.
+--                              system PATH.  This isn't just a directory name,
+--                              it's the full path name of the exe file.
+--                              For example, c:\tools\fzf.exe or etc.
 --
 --      fzf.default_bindings    Controls whether to apply default bindings.
 --                              This is false by default, to avoid interference
@@ -134,7 +136,9 @@ local function maybe_add(name, ...)
 end
 
 maybe_add('fzf.height', '40%', 'Height to use for the --height flag')
-maybe_add('fzf.exe_location', '', 'Location of fzf.exe if not on the PATH')
+maybe_add('fzf.exe_location', '', 'Location of fzf.exe if not on the PATH',
+          "This isn't just a directory name, it's the full path name of the\n"..
+          "exe file.  For example, c:\\tools\\fzf.exe or etc.")
 
 if rl.setbinding then
     maybe_add(
