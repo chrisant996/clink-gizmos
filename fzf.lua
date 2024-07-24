@@ -39,17 +39,24 @@
 -- The available settings are as follows.
 -- The settings can be controlled via 'clink set'.
 --
---      fzf.height              Height to use for the fzf --height flag.  See
---                              fzf documentation on --height for values.
+--      fzf.default_bindings    Controls whether to apply default bindings.
+--                              This is false by default, to avoid interference
+--                              with your existing key bindings.
 --
 --      fzf.exe_location        Specifies the location of fzf.exe if not in the
 --                              system PATH.  This isn't just a directory name,
 --                              it's the full path name of the exe file.
 --                              For example, c:\tools\fzf.exe or etc.
 --
---      fzf.default_bindings    Controls whether to apply default bindings.
---                              This is false by default, to avoid interference
---                              with your existing key bindings.
+--      fzf.show_descriptions   Show match descriptions when available.  Fzf
+--                              searches in the description text as well.
+--
+--      fzf.color_descriptions  Apply color to match descriptions when shown.
+--                              Uses the color.description setting, and adds
+--                              the --ansi flag when invoking fzf.
+--
+--      fzf.height              Height to use for the fzf --height flag.  See
+--                              fzf documentation on --height for values.
 --
 --
 -- Optional:  You can set the following environment variables to customize the
@@ -140,6 +147,14 @@ maybe_add('fzf.exe_location', '', 'Location of fzf.exe if not on the PATH',
           "This isn't just a directory name, it's the full path name of the\n"..
           "exe file.  For example, c:\\tools\\fzf.exe or etc.")
 
+if console.cellcount and console.plaintext then
+    maybe_add('fzf.show_descriptions', true, 'Show match descriptions when available',
+              'When enabled, fzf also searches in the match description text.')
+    maybe_add('fzf.color_descriptions', false, 'Apply color to match descriptions when shown',
+              'Uses the color defined in the color.description setting, and adds\n'..
+              'the --ansi flag when invoking fzf.')
+end
+
 if rl.setbinding then
     maybe_add(
         'fzf.default_bindings',
@@ -171,6 +186,16 @@ local function join_str(a, b)
     end
 end
 
+local function sgr(code)
+    if not code then
+        return '\x1b[m'
+    elseif string.byte(code) == 0x1b then
+        return code
+    else
+        return '\x1b['..code..'m'
+    end
+end
+
 local function describe_commands()
     if describemacro_list then
         for _, d in ipairs(describemacro_list) do
@@ -184,6 +209,57 @@ local function add_help_desc(macro, desc)
     if rl.describemacro and describemacro_list then
         table.insert(describemacro_list, { macro=macro, desc=desc })
     end
+end
+
+local function fix_unsafe_quotes(s)
+    local fixed = ''
+    local i = 1
+    while i <= #s do
+        -- Find open quote.  If none, all is well.
+        local j = string.find(s, '"', i)
+        if j then
+            fixed = fixed..s:sub(i, j - 1)
+        else
+            fixed = fixed..s:sub(i)
+            break
+        end
+        i = j + 1
+
+        -- Find close quote.
+        local t
+        local k = string.find(s, '"', i)
+        if k then
+            t = s:sub(i, k - 1)
+        else
+            t = s:sub(i)
+        end
+        if t:find('[ +=;,]') then
+            -- Convert the quotes, otherwise they can lead to CMD malfunctions
+            -- if fzf later passes the description to another program (such as
+            -- a preview script).
+            if k then
+                --fixed = fixed.."''"..t.."''"
+                fixed = fixed.."“"..t.."”"
+            else
+                --fixed = fixed.."''"..t
+                fixed = fixed.."”"..t
+            end
+        else
+            -- The quotes are fine, so don't convert them.
+            if k then
+                fixed = fixed..'"'..t..'"'
+            else
+                fixed = fixed..'"'..t
+            end
+        end
+
+        -- Next.
+        if not k then
+            break
+        end
+        i = k + 1
+    end
+    return fixed
 end
 
 local function need_cd_drive(dir)
@@ -761,23 +837,57 @@ local function filter_matches(matches, completion_type, filename_completion_desi
         return
     end
 
+    local show_descriptions = settings.get('fzf.show_descriptions')
+    local color_description = settings.get('fzf.color_descriptions') and sgr(settings.get('color.description'))
+    local norm = sgr()
+
+    -- Match text to be displayed.
+    local strings = {}
+    local longest = 0
+    local any_desc
+    for _,m in ipairs(matches) do
+        local s
+        if m.display and console.plaintext then
+            s = console.plaintext(m.display)
+        else
+            s = m.match
+        end
+        table.insert(strings, s)
+        if show_descriptions then
+            local cells = console.cellcount(s)
+            if longest < cells then
+                longest = cells
+            end
+            if m.description and m.description ~= '' then
+                any_desc = true
+            end
+        end
+    end
+
     -- Start fzf.  Extra quotes are needed to work around CMD quoting issue.
-    local r,w = io.popenrw('"'..get_fzf('complete')..'"')
+    local addl_options = (color_description and any_desc) and '--ansi' or nil
+    local r,w = io.popenrw('"'..get_fzf('complete', addl_options)..'"')
     if not r or not w then
         return
     end
 
     -- Write matches to the write pipe.
     local which = {}
-    for _,m in ipairs(matches) do
-        if m.display and console.plaintext then
-            local text = console.plaintext(m.display)
-            table.insert(which, text)
-            w:write(text..'\n')
-        else
-            table.insert(which, m.match)
-            w:write(m.match..'\n')
+    for i,m in ipairs(matches) do
+        local text = strings[i]
+        if show_descriptions and m.description and m.description ~= '' then
+            local desc = fix_unsafe_quotes(m.description)
+            text = text..string.rep(' ', longest + 4 - console.cellcount(text))
+            if color_description then
+                text = text..color_description..desc..norm
+            else
+                text = text..console.plaintext(desc)
+            end
         end
+        if not which[text] then
+            which[text] = m
+        end
+        w:write(text..'\n')
     end
     w:close()
 
@@ -788,10 +898,9 @@ local function filter_matches(matches, completion_type, filename_completion_desi
         if not line then
             break
         end
-        for i,m in ipairs(matches) do
-            if line == which[i] then
-                table.insert(ret, m)
-            end
+        local m = which[line]
+        if m then
+            table.insert(ret, m)
         end
     end
     r:close()
