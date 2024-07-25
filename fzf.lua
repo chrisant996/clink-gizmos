@@ -884,8 +884,11 @@ local function filter_matches(matches, completion_type, filename_completion_desi
                 text = text..console.plaintext(desc)
             end
         end
-        if not which[text] then
-            which[text] = m
+        -- Must use plaintext() because fzf always strips ANSI color codes when
+        -- it writes the results, even when the --ansi flag is used.
+        local plain = console.plaintext(text)
+        if not which[plain] then
+            which[plain] = m
         end
         w:write(text..'\n')
     end
