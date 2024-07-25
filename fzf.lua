@@ -829,7 +829,7 @@ end
 --------------------------------------------------------------------------------
 -- Match generator.
 
-local function filter_matches(matches, completion_type, filename_completion_desired) -- luacheck: no unused
+local function filter_matches(matches)
     if not fzf_complete_intercept then
         return
     end
@@ -918,7 +918,22 @@ local function create_generator()
         interceptor = clink.generator(0)
         function interceptor:generate(line_state, match_builder) -- luacheck: no unused
             if fzf_complete_intercept then
-                clink.onfiltermatches(filter_matches)
+                -- Use two layers of onfiltermatches callbacks:
+                --
+                -- The generator runs early.  So the onfiltermatches callback
+                -- function it registers is the first filter function.  But then
+                -- other filter functions (e.g. to remove "hidden" matches) run
+                -- AFTER fzf is invoked.  So fzf shows matches that should be
+                -- hidden.  Oops.
+                --
+                -- To compensate, the first onfiltermatches callback function
+                -- needs to register a second onfiltermatches callback function,
+                -- which then ends up running LAST.  Then fzf doesn't list
+                -- "hidden" matches.
+                clink.onfiltermatches(function(matches)
+                    clink.onfiltermatches(filter_matches)
+                    return matches
+                end)
             end
             return false
         end
