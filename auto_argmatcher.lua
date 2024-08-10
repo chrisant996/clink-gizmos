@@ -46,6 +46,8 @@
 --      --slashes       Some programs recognize both - and / flags, but only
 --                      list the - flags in the help text.  This mode adds a /
 --                      flag for each - flag (e.g. for -x, also adds /x).
+--      --concat        Allow one letter flags to be concatenated.  This mode
+--                      recognizes /hk if /h and /k are one letter flags.
 --      --override_command  The 'help_flag' specifies the whole command to run.
 --
 -- Example for --override_command:
@@ -86,6 +88,7 @@ local _modes = {
     ['--caseless'] = { 'case', 1 },
     ['--case'] = { 'case', 2 },
     ['--slashes'] = { 'slashes', 1 },
+    ['--concat'] = { 'concat', true },
     ['--override-command'] = { 'override_command', true },
 }
 
