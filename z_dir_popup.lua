@@ -67,12 +67,12 @@ function z_dir_popup(rl_buffer) -- luacheck: no global
         table.insert(dirs, list[i])
     end
 
-    local selected = clink.popuplist("Z Directories", dirs)
+    local selected, shifted = clink.popuplist("Z Directories", dirs)
     if not selected then
         return
     end
 
-    local dir, shifted = selected:match("^ *[0-9.]+ +(.+)$")
+    local dir = selected:match("^ *[0-9.]+ +(.+)$")
     if not dir or dir == "" then
         rl_buffer:ding()
         return

@@ -67,7 +67,7 @@ function zoxide_dir_popup(rl_buffer) -- luacheck: no global
         table.insert(dirs, list[i])
     end
 
-    local selected = clink.popuplist("Zoxide Directories", dirs)
+    local selected, shifted = clink.popuplist("Zoxide Directories", dirs)
     if not selected then
         return
     end
