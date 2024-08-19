@@ -4,6 +4,12 @@ setlocal
 rem     Depends on:
 rem     - https://hpjansson.org/chafa
 rem     - https://github.com/sharkdp/bat
+rem
+rem     If your terminal supports sixels, then you can set the environment
+rem     variable CLINK_FZF_PREVIEW_SIXELS to make this fzf-preview.cmd script
+rem     tell chafa to use sixels.  E.g.:
+rem
+rem         set CLINK_FZF_PREVIEW_SIXELS=1
 
 
 rem     IMPORTANT NOTE:
@@ -32,7 +38,9 @@ if %__ARG% == "" goto :end
 rem -- Try to preview as an image.
 rem    NOTE: Unfortunately chafa does not support the usual -- syntax to end flags.
 if x%__ARG:~1,1% == x- goto :try_file
-2>nul chafa %__ARG%
+set __CHAFA_OPTS=
+if not x%CLINK_FZF_PREVIEW_SIXELS% == x set __CHAFA_OPTS=-f sixels
+2>nul chafa %__CHAFA_OPTS% %__ARG%
 if not errorlevel 1 goto :end
 
 rem -- Try to preview as a text file.

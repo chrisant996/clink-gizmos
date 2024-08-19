@@ -86,6 +86,11 @@
 --                                inserted by customized FZF_CTRL_T_COMMAND and
 --                                FZF_ALT_C_COMMAND commands.
 --
+--          If your terminal supports sixels and you configure fzf to use the
+--          fzf-preview.cmd script, then you can set the environment variable
+--          CLINK_FZF_PREVIEW_SIXELS to tell the fzf-preview.cmd script to tell
+--          chafa to use sixels.  (Set it to any value except blank.)
+--
 -- To get file icons to show up in FZF, you can use DIRX v0.9 or newer with
 -- Clink v1.6.5, and set the FZF env vars like this:
 --
