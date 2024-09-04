@@ -155,6 +155,7 @@ local function mark(text, codes)
     local space = true -- luacheck: no unused
 
     local function set_mode(c, v)
+        assert((c or "") ~= "")
         if need_reapply_colors then
             do_reapply_colors()
         end
@@ -167,6 +168,7 @@ local function mark(text, codes)
     end
 
     local function clear_mode(c, tc)
+        assert((c or "") ~= "")
         local index = mode[c]
         if index then
             for i = index + 1, #mode do
@@ -360,9 +362,7 @@ local function mark(text, codes)
                 local tc = (type(t) == "table" and t[2])
                 clear_mode(c, tc)
                 c = ""
-            end
-
-            if startable and peek ~= " " then
+            elseif startable and peek ~= " " then
                 local t = codes[cc or c]
                 local tc
                 if type(t) == "string" then
