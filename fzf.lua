@@ -778,6 +778,7 @@ function fzf_directory(rl_buffer, line_state)
         rl_buffer:beginundogroup()
         rl_buffer:remove(0, -1)
         local drive = need_cd_drive(str)
+        str = maybe_quote(str)
         if drive then
             rl_buffer:insert(drive..' & cd '..str)
         else
