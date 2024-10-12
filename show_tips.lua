@@ -184,6 +184,15 @@ local function collect_tips(external, seen)
                    {early=true, text="Completion colors can be customized by setting the LS_COLORS environment variable.\nSee https://chrisant996.github.io/clink/clink.html#completioncolors for more info."})
     end
 
+    if (clink.version_encoded or 0) >= 10070000 then -- luacheck: ignore 542
+        insert_tip("usage:clinktheme", true,
+                   {early=true, text="You can use 'clink config theme list' to list available color themes, or use 'clink config theme use' to use a color theme.\nSee https://chrisant996.github.io/clink/clink.html#color-themes for more info."})
+        insert_tip("usage:clinkprompt", true,
+                   {early=true, text="You can use 'clink config prompt list' to list available custom prompts, or use 'clink config prompt use' to use a custom prompt.\nSee https://chrisant996.github.io/clink/clink.html#custom-prompts for more info."})
+        insert_tip("usage:hexcolors", true,
+                   {early=true, text="You can use hex RGB color codes when setting Clink colors.\nFor example 'clink set color.input #A763FF'."})
+    end
+
     -- Allow external tips.
     if external then
         for _, t in ipairs(external) do
