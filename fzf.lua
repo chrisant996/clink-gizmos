@@ -434,6 +434,23 @@ local function escape_quotes(text)
     return text:gsub('"', '\\"')
 end
 
+local function chcp(cp)
+    local ret
+    if cp == 65001 then
+        local r = io.popen('2>nul chcp')
+        if r then
+            local line = r:read()
+            ret = line:match('%d+')
+            r:close()
+            cp = '65001'
+        end
+    end
+    if type(cp) == 'string' then
+        os.execute('>nul 2>nul chcp '..cp)
+    end
+    return ret
+end
+
 local function replace_dir(str, word)
     if word == '.' then
         word = nil
@@ -560,9 +577,12 @@ local function fzf_recursive(rl_buffer, line_state, search, dirs_only) -- luache
 
     local first, last, has_quote, delimit = get_word_insert_bounds(line_state) -- luacheck: no unused
 
+    local orig_cp = chcp(65001)
+
     local r = io.popen('2>nul '..command..' | '..get_fzf(mode)..' -q "'..word..'"')
     if not r then
         rl_buffer:ding()
+        chcp(orig_cp)
         return
     end
 
@@ -577,7 +597,9 @@ local function fzf_recursive(rl_buffer, line_state, search, dirs_only) -- luache
             match = line
         end
     end
+
     r:close()
+    chcp(orig_cp)
 
     if match then
         insert_matches(rl_buffer, first, last, has_quote, { match })
@@ -734,9 +756,12 @@ function fzf_file(rl_buffer, line_state)
 
     local first, last, has_quote, delimit = get_word_insert_bounds(line_state) -- luacheck: no unused
 
+    local orig_cp = chcp(65001)
+
     local r = io.popen(command..' 2>nul | '..get_fzf('path')..' -i -m')
     if not r then
         rl_buffer:ding()
+        chcp(orig_cp)
         return
     end
 
@@ -750,6 +775,7 @@ function fzf_file(rl_buffer, line_state)
     end
 
     r:close()
+    chcp(orig_cp)
 
     insert_matches(rl_buffer, first, last, has_quote, matches)
 
@@ -763,15 +789,20 @@ function fzf_directory(rl_buffer, line_state)
     local dir = get_word_at_cursor(line_state)
     local command = get_alt_c_command(dir)
 
+    local orig_cp = chcp(65001)
+
     local r = io.popen(command..' 2>nul | '..get_fzf('dirs')..' -i')
     if not r then
         rl_buffer:ding()
+        chcp(orig_cp)
         return
     end
 
     local str = r:read('*all')
     str = str and str:gsub('[\r\n]', '') or ''
+
     r:close()
+    chcp(orig_cp)
 
     if #str > 0 then
         str = maybe_strip_icon(str)
