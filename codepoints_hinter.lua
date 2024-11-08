@@ -4,6 +4,11 @@
 --
 -- By default this display is disabled.
 --
+-- In Clink v1.7.5 or nigher, pressing Alt-F1 will immediately display the
+-- codepoints, even for ASCII characters.  Unless Alt-F1 is already bound to
+-- something else, in which can you can bind "luafunc:display_codepoints" to
+-- another key.
+--
 -- Run `clink set codepoints.show_preview true` to enable the display.
 --
 -- Requires Clink v1.7.4 or higher.
@@ -19,23 +24,28 @@ settings.add("codepoints.show_preview", true, "Show Unicode codepoints at the cu
              "the Unicode codepoints at the cursor position.")
 
 local enabled
-local function init_enabled()
-    enabled = settings.get("codepoints.show_preview")
-end
-clink.onbeginedit(init_enabled)
+local force
 
-local function codepoints_message(line_state, only_emoji)
-    if not enabled then
+local function onbeginedit()
+    enabled = settings.get("codepoints.show_preview")
+    force = nil
+end
+clink.onbeginedit(onbeginedit)
+
+local function codepoints_message(line, cursorpos, only_emoji)
+    if not enabled and not force then
         return
     end
 
-    local cursorpos = line_state:getcursor() or 1
-    local line = line_state:getline()
+    cursorpos = cursorpos or 1
+    if force and cursorpos > #line then
+        return "Codepoints:  (end of line)", cursorpos
+    end
 
     for str, _, emoji in console.cellcountiter(line:sub(cursorpos)) do
-        if only_emoji and not emoji then
+        if only_emoji and not emoji and not force then
             return
-        elseif #str > 1 or string.byte(str) < 0x20 or string.byte(str) >= 0x80 then
+        elseif force or #str > 1 or string.byte(str) < 0x20 or string.byte(str) >= 0x80 then
             local msg = "Codepoints: "
             local utf8 = ""
             for s, value in unicode.iter(str) do
@@ -53,10 +63,42 @@ end
 
 local hinter = clink.hinter(99)
 function hinter:gethint(line_state) -- luacheck: no self
-    return codepoints_message(line_state, false)
+    return codepoints_message(line_state:getline(), line_state:getcursor(), false)
 end
 
 local hinter_emoji = clink.hinter(-1)
 function hinter_emoji:gethint(line_state) -- luacheck: no self
-    return codepoints_message(line_state, true)
+    return codepoints_message(line_state:getline(), line_state:getcursor(), true)
+end
+
+if (clink.version_encoded or 0) >= 10070005 then
+    rl.describemacro("luafunc:display_codepoints", "Toggle displaying the Unicode codepoints at the cursor position")
+
+    local has_oninputlinechanged
+    local function oninputlinechanged(line)
+        if line == "" then
+            force = nil
+        end
+    end
+
+    function display_codepoints(rl_buffer) -- luacheck: no global
+        local msg
+        if force then
+            force = nil
+        else
+            force = true
+            msg = codepoints_message(rl_buffer:getbuffer(), rl_buffer:getcursor(), false)
+        end
+        rl_buffer:setcommentrow(msg or "\x1b[m")
+        if not has_oninputlinechanged then
+            clink.oninputlinechanged(oninputlinechanged)
+            has_oninputlinechanged = true
+        end
+    end
+
+    local key = [["\e\eOP"]]
+    local binding = rl.getbinding(key)
+    if not binding then
+        rl.setbinding(key, [["luafunc:display_codepoints"]])
+    end
 end
