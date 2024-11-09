@@ -42,7 +42,9 @@ local function codepoints_message(line, cursorpos, only_emoji)
         return "Codepoints:  (end of line)", cursorpos
     end
 
-    for str, _, emoji in console.cellcountiter(line:sub(cursorpos)) do
+    local iter = console.cellcountiter(line:sub(cursorpos))
+    local str, _, emoji = iter()
+    if str then
         if only_emoji and not emoji and not force then
             return
         elseif force or #str > 1 or string.byte(str) < 0x20 or string.byte(str) >= 0x80 then
@@ -54,9 +56,7 @@ local function codepoints_message(line, cursorpos, only_emoji)
                     utf8 = utf8..string.format("\\x%02x", string.byte(s, i))
                 end
             end
-            return msg..'  "'..utf8..'"', cursorpos
-        else
-            break
+            return msg..'  '..str..'  "'..utf8..'"', cursorpos
         end
     end
 end
