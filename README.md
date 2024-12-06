@@ -31,6 +31,7 @@ Each script file contains usage information in comments at the top of the script
 
 Script Name | Description
 -|-
+[abbr.lua](abbr.lua) | Reads abbreviations and corresponding expansions from a .abbr file.  Pressing SPACE after an abbreviation replaces it with the corresponding expansion.  Refer to the usage information in the script file for details.
 [auto_argmatcher.lua](auto_argmatcher.lua) | Reads a config file and automatically creates argmatchers (completion generators) for specified programs by parsing their help text output.  Refer to the usage information in the script file for details.
 [autopull.lua](autopull.lua) | Periodically runs `git pull` in a configurable list of directories.  Refer to the usage information in the script file for details.
 [codepoints_hinter.lua](codepoints_hinter.lua) | Can display a hint showing the Unicode codepoints for the non-ASCII character at the cursor position.  Run `clink set codepoints.show_preview true` to enable it.  If not already bound to something else, <kbd>Alt</kbd>-<kbd>F1</kbd> toggles immediate display of codepoints, even if the `codepoints.show_preview` setting is false (the <kbd>Alt</kbd>-<kbd>F1</kbd> key binding requires Clink v1.7.5 or newer).  Refer to the usage information in the script file for details.
