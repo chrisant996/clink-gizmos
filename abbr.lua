@@ -187,7 +187,7 @@ local function init()
                     for line in r:lines() do
                         line = line:gsub("^%s+", ""):gsub("%s+$", "")
                         if not line:match("^[;#]") and not line:match("^//") then
-                            local a,x = line:match("^([^%s]+)=(.*)$")
+                            local a,x = line:match("^([^%s=]+)=(.*)$")
                             if a then
                                 abbr_list[a] = x
                                 num = num + 1
