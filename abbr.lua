@@ -273,7 +273,7 @@ function abbr_popup(rl_buffer, line_state) -- luacheck: no unused
         items.colors.select = items.colors.selectdesc
         items.colors.selectdesc = tmp
         if items.colors.border then
-            -- Workaround for border color issue in Clink v1.7.4 and earlier.
+            -- Workaround for border color issue in Clink v1.7.5 and earlier.
             items.colors.border = "0;"..items.colors.border
         end
     end
