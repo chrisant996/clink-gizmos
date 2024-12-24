@@ -55,6 +55,10 @@ local function format_var_name(var_name, var_type)
     return out
 end
 
+local function comparator(a, b)
+    return tostring(a) < tostring(b)
+end
+
 local function dumpvar_internal(value, depth, name, indent, comma)
     if type(depth) == "string" and not name and not indent and not comma then
         name = depth
@@ -92,7 +96,7 @@ local function dumpvar_internal(value, depth, name, indent, comma)
                     end
                 end
             end
-            table.sort(keys)
+            table.sort(keys, comparator)
             for _,n in ipairs(keys) do
                 local v = value[n]
                 if v ~= _G then
