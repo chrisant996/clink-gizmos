@@ -31,13 +31,14 @@ Each script file contains usage information in comments at the top of the script
 
 Script Name | Description
 -|-
-[abbr.lua](abbr.lua) | Reads abbreviations and corresponding expansions from a .abbr file.  Pressing SPACE after an abbreviation replaces it with the corresponding expansion.  Refer to the usage information in the script file for details.
+[abbr.lua](abbr.lua) | Reads abbreviations and corresponding expansions from a .abbr file.  Pressing <kbd>Space</kbd> after an abbreviation replaces it with the corresponding expansion.  Refer to the usage information in the script file for details.
 [auto_argmatcher.lua](auto_argmatcher.lua) | Reads a config file and automatically creates argmatchers (completion generators) for specified programs by parsing their help text output.  Refer to the usage information in the script file for details.
 [autopull.lua](autopull.lua) | Periodically runs `git pull` in a configurable list of directories.  Refer to the usage information in the script file for details.
 [codepoints_hinter.lua](codepoints_hinter.lua) | Can display a hint showing the Unicode codepoints for the non-ASCII character at the cursor position.  Run `clink set codepoints.show_preview true` to enable it.  If not already bound to something else, <kbd>Alt</kbd>-<kbd>F1</kbd> toggles immediate display of codepoints, even if the `codepoints.show_preview` setting is false (the <kbd>Alt</kbd>-<kbd>F1</kbd> key binding requires Clink v1.7.5 or newer).  Refer to the usage information in the script file for details.
-[cwdhistory.lua](cwdhistory.lua) | Adds cwd history that is saved between sessions.  Use Alt-Ctrl-PgUp to show the cwd history popup list.  Refer to the usage information in the script file for details.
+[cwdhistory.lua](cwdhistory.lua) | Adds cwd history that is saved between sessions.  Use <kbd>Alt</kbd>-<kbd>Ctrl</kbd>-<kbd>PgUp</kbd> to show the cwd history popup list.  Refer to the usage information in the script file for details.
 [divider.lua](divider.lua) | Automatically prints a divider line before and after running certain commands.  The list of commands is configurable.  Refer to the usage information in the script file for details.
 [doskey_hinter.lua](doskey_hinter.lua) | Can display a hint showing the definition of the doskey alias at the cursor position.  Run `clink set doskey.show_preview true` to enable it.  Refer to the usage information in the script file for details.
+[doskey_popup.lua](doskey_popup.lua) | Use <kbd>Ctrl</kbd>-<kbd>X</kbd>,<kbd>D</kbd> to show a list of doskey aliases and their expansions.  Refer to the usage information in the script file for details.
 [fuzzy_history.lua](fuzzy_history.lua) | Adds an autosuggest strategy `fuzzy_history` which can ignore path or file extension when providing suggestions from the command history list.  Refer to the usage information in the script file for details.
 [fzf.lua](fzf.lua) | Adds support for using [fzf](https://github.com/junegunn/fzf) with Clink.  Refer to the usage information in the script file for how to activate key bindings.  (This is the script from the [clink-fzf](https://github.com/chrisant996/clink-fzf) repo.)
 [highlight_envvars.lua](highlight_envvars.lua) | Can highlight environment variables in the command line, and/or can display a hint showing the value of the environment variable at the cursor.  Use <code>clink set color.envvars <em>your color here</em></code> to set a color (it only highlights them if a color is set).  Use <code>clink set highlight_envvars.show_preview true` to enable the display hint.
@@ -48,7 +49,7 @@ Script Name | Description
 [noclink.lua](noclink.lua) | This and the [noclink.cmd](noclink.cmd) script let you temporarily disable/reenable Clink (or Clink's prompt filtering).  Run `noclink -?` for help.
 [show_tips.lua](show_tips.lua) | Shows a tip about Clink each time Clink is injected.
 [tilde_autoexpand.lua](tilde_autoexpand.lua) | Automatically expands tildes into the user's home directory (disabled by default; see usage information in the script file for how to enable it).
-[toggle_short.lua](toggle_short.lua) | Adds a command to toggle the word under the cursor between long and short path names.  The default key binding is Ctrl-Alt-A.
+[toggle_short.lua](toggle_short.lua) | Adds a command to toggle the word under the cursor between long and short path names.  The default key binding is <kbd>Ctrl</kbd>-<kbd>Alt</kbd>-<kbd>A</kbd>.
 [vscode_shell_integration.lua](vscode_shell_integration.lua) | Automatically enables shell integration for VSCode embedded terminal windows.
 [z_dir_popup.lua](z_dir_popup.lua) | If you use [z.lua](https://github.com/skywind3000/z.lua) then this provides a popup listing of directories from z.  See usage information in the script file for details.
 [zoxide_dir_popup.lua](zoxide_dir_popup.lua) | If you use [zoxide](https://github.com/ajeetdsouza/zoxide) then this provides a popup listing of directories from zoxide.  See usage information in the script file for details.
