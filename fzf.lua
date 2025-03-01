@@ -425,6 +425,10 @@ end
 
 local function maybe_quote(word)
     if need_quote(word) then
+        if word:sub(-1) == "\\" then
+            -- Double any trailing backslashes, per Windows quoting rules.
+            word = word .. word:match("\\+$")
+        end
         word = '"' .. word .. '"'
     end
     return word
