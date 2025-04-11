@@ -103,9 +103,11 @@ function toggle_short_path(rl_buffer)
         return
     end
 
+    local cursor_delta = math.max(0, rl_buffer:getcursor() - (start + len))
     rl_buffer:beginundogroup()
     rl_buffer:setcursor(start)
     rl_buffer:remove(start, start + len)
     rl_buffer:insert(new)
+    rl_buffer:setcursor(rl_buffer:getcursor() + cursor_delta)
     rl_buffer:endundogroup()
 end
