@@ -105,7 +105,9 @@ local contexts = {
 --------------------------------------------------------------------------------
 -- Decide whether the script can be loaded.
 
-if not clink.onfilterinput then
+local standalone = not clink.argmatcher
+
+if not clink.onfilterinput and not standalone then
     print("web_search.lua requires a newer version of Clink; please upgrade.")
     return
 end
@@ -115,7 +117,7 @@ settings.add("web_search.enable", true, "Web search shortcuts",
              "type \"bing some words\" to use Bing to search for \"some words\".\n"..
              "Type \"web_search --list\" to list the available search shortcuts.")
 
-if not settings.get("web_search.enable") then
+if not settings.get("web_search.enable") and not standalone then
     return
 end
 
@@ -157,24 +159,36 @@ end
 load_contexts(os.getenv("USERPROFILE"))
 load_contexts(os.getenv("=clink.profile"))
 load_contexts(os.getenv("=clink.bin"))
+load_contexts(os.getenv("CLINK_WEB_SEARCH"))
 
 --------------------------------------------------------------------------------
 -- Create doskey aliases for the available search contexts.
 
+local function overlay_alias(name, alias)
+    if not standalone then
+        if not alias then
+            local a = os.getalias(name)
+            if not a or a:find("^web_search%s") then
+               alias = "web_search "..name.." $*"
+            end
+        end
+        if alias then
+            os.setalias(name, alias)
+        end
+    end
+end
+
 local context_names = {}
 for n in pairs(contexts) do
     table.insert(context_names, n)
-    local a = os.getalias(n)
-    if not a or a:find("^web_search%s") then
-        os.setalias(n, "web_search "..n.." $*")
-    end
+    overlay_alias(n)
 end
 
 if (clink.version_encoded or 0) < 10070015 then
     -- Work around a bug in clink.parseline() in Clink v1.7.14 and lower.
-    os.setalias("web_search", "web_search_workaround $*")
+    overlay_alias("web_search", "web_search_workaround $*")
 else
-    os.setalias("web_search", "web_search $*")
+    overlay_alias("web_search", "web_search $*")
 end
 
 --------------------------------------------------------------------------------
@@ -250,6 +264,11 @@ end
 
 --------------------------------------------------------------------------------
 -- Intercept input lines and process web_search commands.
+
+if standalone then
+    web_search(table.concat({...}, " "))
+    return
+end
 
 clink.onfilterinput(function(text)
     local context = text:match("^%s*([^%s]+)")
