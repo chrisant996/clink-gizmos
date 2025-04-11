@@ -131,7 +131,8 @@ local function load_contexts(from)
             local n = 0
             for l in f:lines() do
                 if l:match("^[^-;#/]") then
-                    local name, url = l:match("^%s*([^%s]+)%s+(.*)$")
+                    local url
+                    name, url = l:match("^%s*([^%s]+)%s+(.*)$")
                     if name then
                         if url then
                             -- Add a search context
@@ -143,7 +144,6 @@ local function load_contexts(from)
                             n = n + 1
                         end
                     end
-                    table.insert(allowed, l)
                 end
             end
             f:close()
@@ -162,7 +162,7 @@ load_contexts(os.getenv("=clink.bin"))
 -- Create doskey aliases for the available search contexts.
 
 local context_names = {}
-for n, u in pairs(contexts) do
+for n in pairs(contexts) do
     table.insert(context_names, n)
     local a = os.getalias(n)
     if not a or a:find("^web_search%s") then
@@ -185,16 +185,16 @@ local function pad(text, max_width)
     return text..string.rep(" ", max_width - width)
 end
 
-local function web_search(args, nested)
+local function web_search(input, nested)
     -- Parse the context name and arguments.
-    local name = args:match("^%s*([^%s]+)")
-    _, args = args:match("^%s*([^%s]+)%s+(.*)$")
+    local name = input:match("^%s*([^%s]+)")
+    local _, args = input:match("^%s*([^%s]+)%s+(.*)$")
 
     -- List available contexts, if requested.
     if name == "--list" then
         local list = {}
         local max_width = 0
-        for n, u in pairs(contexts) do
+        for n in pairs(contexts) do
             max_width = math.max(max_width, console.cellcount(n))
             table.insert(list, n)
         end
