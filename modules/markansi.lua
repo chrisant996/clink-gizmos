@@ -58,18 +58,53 @@ local default_codes = {
 local double_star_bold = true       -- "**" for bold, and convert "*" to "_".
 
 --------------------------------------------------------------------------------
-local iter
+local unicode_iter
 if unicode and unicode.iter then
-    iter = unicode.iter
-else
-    iter = function(text)
+    unicode_iter = function(text)
         local i = 1
+        local next = unicode.iter(text)
         return (function()
-            local s = text:sub(i, i)
-            i = i + 1
-            return (s ~= "" and s)
+            local o = i
+            local s = next()
+            if s then
+                i = i + #s
+            end
+            return s, o
         end)
     end
+else
+    unicode_iter = function(text)
+        local i = 1
+        return (function()
+            local o = i
+            local s = text:sub(i, i)
+            s = (s ~= "" and s)
+            if s then
+                i = i + 1
+            end
+            return s, o
+        end)
+    end
+end
+
+local function iter(text)
+    local prev
+    local indenting = true
+    local next = unicode_iter(text)
+    return (function()
+        local s, o
+        while true do
+            s, o = next()
+            if indenting then
+                indenting = (s == " " or s == nil)
+                break
+            elseif s ~= " " or prev ~= " " then
+                break
+            end
+        end
+        prev = s
+        return (s ~= "" and s), o
+    end)
 end
 
 local function sgr(code)
@@ -100,6 +135,13 @@ local function match_hyperlink(text, offset)
     end
     return display, hyperlink, (1 + #display + 2 + #hyperlink + 1)
 end
+
+local amp_symbols = {
+    ["&nbsp;"] = " ",
+    ["&amp;"] = "&",
+    ["&lt;"] = "<",
+    ["&gt;"] = ">",
+}
 
 local function mark(text, codes)
     local s = ""
@@ -138,15 +180,11 @@ local function mark(text, codes)
     end
 
     local _curr_offset
-    local _next_offset = 1
     local _iter_func = iter(text)
 
     local function next()
-        _curr_offset = _next_offset
-        local c = _iter_func()
-        if c then
-            _next_offset = _next_offset + #c
-        end
+        local c
+        c, _curr_offset = _iter_func()
         return c
     end
 
@@ -346,6 +384,30 @@ local function mark(text, codes)
                     c = c..sgr(v)
                 end
             end
+        elseif c == "&" and (peek or ""):find("[#A-Za-z]") then
+            local tmp = c
+            while true do
+                c = peek
+                peek = next()
+                if not c then
+                    break
+                end
+                tmp = tmp..c
+                if c == ";" then
+                    break
+                end
+            end
+            local amp = amp_symbols[tmp:lower()]
+            if amp then
+                tmp = amp
+            elseif unicode.char then
+                local codepoint = tmp:match("^&#([0-9]+);$")
+                if codepoint then
+                    tmp = unicode.char(tonumber(codepoint))
+                end
+            end
+            concat(tmp)
+            c = ""
         elseif double_star_bold and c == "*" then
             if peek ~= "*" then
                 cc = "_"    -- Redirect * to _ for code lookup.
