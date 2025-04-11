@@ -759,22 +759,33 @@ local function generate_completions(commands)
     end
 end
 
+local top = '\x1b[s\x1b[H'
+local restore = '\x1b[K\x1b[m\x1b[u'
+local okbanner = '0;48;5;56;1;97'
+local errbanner = '0;48;5;88;1;97'
+
+local function banner(sgr, msg)
+    if settings.get("fishcomplete.banner") then
+        clink.print(string.format("%s\x1b[%sm%s%s", top, sgr, msg, restore), NONL)
+    end
+end
+
 local function oncommand(line_state, info)
     if info.file ~= '' and not clink.getargmatcher(line_state) then
         local dir = path.getdirectory(info.file)
-        local name = path.getbasename(info.file)
+        local basename = path.getbasename(info.file)
 
-        local fish = path.join(dir, name..'.fish')
+        local fish = path.join(dir, basename..'.fish')
         if not os.isfile(fish) then
-            fish = path.join(path.join(dir, 'autocomplete'), name..'.fish')
+            fish = path.join(path.join(dir, 'autocomplete'), basename..'.fish')
             if not os.isfile(fish) then
-                fish = path.join(path.join(dir, 'complete'), name..'.fish')
+                fish = path.join(path.join(dir, 'complete'), basename..'.fish')
                 if not os.isfile(fish) then
                     local completions_dir = settings.get('fishcomplete.completions_dir') or ''
                     if completions_dir == '' then
                         return
                     end
-                    fish = path.join(completions_dir, name..'.fish')
+                    fish = path.join(completions_dir, basename..'.fish')
                     if not os.isfile(fish) then
                         return
                     end
@@ -782,23 +793,23 @@ local function oncommand(line_state, info)
             end
         end
 
-        local commands, failures = parse_fish_completions(name, fish)
+        local name = path.getname(fish)
+        local msg = string.format('Parsing file completions from "%s".', name)
+        log.info(msg)
+        banner(okbanner, msg)
+
+        local commands, failures = parse_fish_completions(basename, fish)
         generate_completions(commands)
 
-        if not settings.get('fishcomplete.banner') then
-            return
-        end
-
-        local top = '\x1b[s\x1b[H'
-        local restore = '\x1b[K\x1b[m\x1b[u'
-
-        fish = path.getname(fish)
         if not failures then
-            clink.print(top..'\x1b[0;48;5;56;1;97mCompletions loaded from "'..fish..'".'..restore, NONL)
+            banner(okbanner, string.format('Completions loaded from "%s".', name))
         else
+            for _,f in ipairs(failures) do
+                log.info(f)
+            end
             local failure = failures[1]
             failure = failure and '; '..failure..'.' or '.'
-            clink.print(top..'\x1b[0;48;5;52;1;97mFailed reading "'..fish..'"'..failure..restore, NONL)
+            banner(errbanner, string.format('Failed reading "%s"%s', name, failure))
         end
     end
 end
