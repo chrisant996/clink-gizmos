@@ -126,9 +126,9 @@ local function i_filter(line)
 
     -- Return the adjusted command line.
     local lines = {
-        " pushd \""..dir.."\" >nul",
+        " pushd \""..dir.."\" >nul & echo \x1b[2A",
         line,
-        " popd >nul",
+        " popd >nul & echo \x1b[2A",
     }
     return lines, false
 end
