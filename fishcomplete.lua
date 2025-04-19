@@ -766,6 +766,9 @@ local errbanner = '0;48;5;88;1;97'
 
 local function banner(sgr, msg)
     if settings.get("fishcomplete.banner") then
+        if console.ellipsify then
+            msg = console.ellipsify(msg, console.getwidth() - 1)
+        end
         clink.print(string.format("%s\x1b[%sm%s%s", top, sgr, msg, restore), NONL)
     end
 end
