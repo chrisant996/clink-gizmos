@@ -207,8 +207,13 @@ local function can_use_lines()
     end
 end
 
+local function get_bottom_char()
+    return (divider_line.bottom_line_char or
+            (can_use_lines() and "─" or "-"))
+end
+
 local function can_use_fancy_line()
-    if not divider_line.no_fancy_line then
+    if not divider_line.no_fancy_line and get_bottom_char() == "─" then
         return can_use_lines()
     end
 end
@@ -347,8 +352,7 @@ local function maybe_print_divider_end()
     local text = get_command_duration(begin_time)
     local max_width = console.getwidth() - (divider_line.align_right and 0 or 1)
     local dur_color = get_color("divider_line_end_text")
-    local bottom_char = (divider_line.bottom_line_char or
-                         (can_use_lines() and "─" or "-"))
+    local bottom_char = get_bottom_char()
 
     if not divider_line.bottom_line_reverse_video then
         if dur_color and dur_color ~= "" then
@@ -368,6 +372,7 @@ local function maybe_print_divider_end()
 
     text = line_color .. string.rep(bottom_char, max_width - console.cellcount(text)) .. text .. sgr()
     clink.print(text)
+    return true
 end
 
 -- Divider line for commands:  This involves a header (divider line before the
@@ -375,13 +380,14 @@ end
 
 local inited_beginedit
 local div_can_divide = true
+local div_end_preceeds_prompt
 
 local function filter_div_prompt()
     if not inited_beginedit then
         -- Defer adding the event handler for printing the divider end line to
         -- make sure it's printed AFTER flexprompt applies its 'spacing' mode.
         clink.onbeginedit(function ()
-            maybe_print_divider_end()
+            div_end_preceeds_prompt = maybe_print_divider_end()
             div_can_divide = true
         end)
         inited_beginedit = true
@@ -449,9 +455,42 @@ local function transientfilter_transient_line_prompt(prompt)
 end
 
 local function transientrightfilter_transient_line_prompt()
-    if _transient_duration and _transient_duration ~= "" and div_can_divide then
-        if can_use_fancy_line() then
-            local width = console.cellcount(_transient_duration)
+    if can_use_fancy_line() then
+        local msg, color
+        if div_end_preceeds_prompt and (clink.version_encoded or 0) >= 10070017 then
+            -- Check if the fancy transient line can be applied to the end
+            -- divider from a divider line command.
+            local info = rl.getpromptinfo() -- Requires v1.7.17 to use inside a transient prompt.
+            local prev_line = console.getlinetext(info.promptline - 1)
+            local console_width = console.getwidth()
+            if prev_line and console.cellcount(prev_line) == console_width - 1 then
+                local first_char
+                for ch in unicode.iter(prev_line) do -- luacheck: ignore 512
+                    if ch ~= " " then
+                        first_char = ch
+                    end
+                    break
+                end
+                if first_char and first_char == get_bottom_char() then
+                    local div, text = prev_line:match("^(.-)(%s.*)$")
+                    local consumed = 0
+                    local first_char_len = #first_char
+                    while div:sub(consumed + 1, consumed + first_char_len) == first_char do
+                        consumed = consumed + first_char_len
+                    end
+                    if consumed == #div and consumed > console_width / 2 then
+                        msg = text
+                        color = get_color("divider_line_end")
+                    end
+                end
+            end
+        elseif div_can_divide then
+            -- Prepare to finish a transient line prompt.
+            msg = _transient_duration
+            color = transient_line_color
+        end
+        if msg and msg ~= "" then
+            local width = console.cellcount(msg)
             local right = string.rep("─", width)..sgr()
             -- Prepend line corners.
             right = "\x1b[A\x1b[D".."╮".."\x1b[B\x1b[D".."╰"..right
@@ -462,7 +501,7 @@ local function transientrightfilter_transient_line_prompt()
                 right = right..sgr().." "
             end
             -- Finally prepend the line color.
-            right = sgr(transient_line_color)..right
+            right = sgr(color)..right
             return right, false
         end
     end
