@@ -455,7 +455,7 @@ local function transientfilter_transient_line_prompt(prompt)
 end
 
 local function transientrightfilter_transient_line_prompt()
-    if can_use_fancy_line() then
+    if can_use_fancy_line() and div_can_divide then
         local msg, color
         if div_end_preceeds_prompt and (clink.version_encoded or 0) >= 10070017 then
             -- Check if the fancy transient line can be applied to the end
@@ -484,7 +484,7 @@ local function transientrightfilter_transient_line_prompt()
                     end
                 end
             end
-        elseif div_can_divide then
+        else
             -- Prepare to finish a transient line prompt.
             msg = _transient_duration
             color = transient_line_color
