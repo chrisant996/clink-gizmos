@@ -773,8 +773,10 @@ local function banner(sgr, msg)
     end
 end
 
-local function oncommand(line_state, info)
-    if info.file ~= '' and not clink.getargmatcher(line_state) then
+local function oncommand(_, info)
+    if info.file ~= '' and
+            not clink.getargmatcher(info.command) and
+            not clink.getargmatcher(info.file) then
         local dir = path.getdirectory(info.file)
         local basename = path.getbasename(info.file)
 

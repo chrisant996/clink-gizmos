@@ -257,8 +257,8 @@ local function build_argmatcher(entry)
 end
 
 --------------------------------------------------------------------------------
-local function oncommand(line_state, info)
-    if clink.getargmatcher(line_state) then
+local function oncommand(_, info)
+    if clink.getargmatcher(info.file) or clink.getargmatcher(info.command) then
         return
     end
 
