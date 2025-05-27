@@ -121,6 +121,8 @@ local function read_history(file)
             local dir, time = line:match("^([^|]*)%|(.*)$")
             if dir and #dir > 0 then
                 table.insert(list, { dir=dir, time=time })
+            elseif dir == "" and #time > 0 then -- luacheck: ignore 542
+                -- Ignore malformed entry.
             elseif #line > 0 then
                 table.insert(list, { dir=line })
             end
@@ -151,8 +153,11 @@ local function merge_nodups(file, nocwd)
     -- Build reversed list with duplicates removed.
     local reversed = {}
     if not nocwd then
-        local cwd_entry = { dir=os.getcwd(), time=os.time(), keep=true }
-        add_and_update_index(reversed, cwd_entry, index, true--[[force]])
+        local cwd = os.getcwd()
+        if cwd ~= "" then
+            local cwd_entry = { dir=cwd, time=os.time(), keep=true }
+            add_and_update_index(reversed, cwd_entry, index, true--[[force]])
+        end
     end
     for i = #new_dirs, 1, -1 do
         table.insert(reversed, new_dirs[i])
@@ -240,10 +245,12 @@ local function update_history_internal(history_filename, nocwd)
 
     if rewrite and f:seek("set") ~= nil then
         for _, entry in ipairs(cwd_history_list) do
-            if entry.time then
-                f:write(entry.dir.."|"..tostring(entry.time).."\n")
-            else
-                f:write(entry.dir.."\n")
+            if entry.dir and entry.dir ~= "" then
+                if entry.time then
+                    f:write(entry.dir.."|"..tostring(entry.time).."\n")
+                else
+                    f:write(entry.dir.."\n")
+                end
             end
         end
 
@@ -290,19 +297,23 @@ function cwdhistory_popup(rl_buffer) -- luacheck: no global
     local items = {}
     local time_format = "%Y-%m-%d  %H:%M:%S"
     for _, entry in ipairs(cwd_history_list) do
-        local time_str
         if entry.time then
-            time_str = os.date(time_format, tonumber(entry.time))
+            local time_str = os.date(time_format, tonumber(entry.time))
+            table.insert(items, { value=entry.dir.."  ", description=time_str.."\t" })
+        else
+            table.insert(items, { value=entry.dir.."  " })
         end
-        table.insert(items, { value=entry.dir.."  ", description=time_str.."\t" })
     end
 
     -- If the most recent is the same as the current directory, then remove it;
     -- there's little point in switching to the same directory.
     if #items > 0 then
-        local top = items[#items].value:gsub(" +$", "")
-        if string.equalsi(os.getcwd(), top) then
-            table.remove(items, #items)
+        local cwd = os.getcwd()
+        if cwd ~= "" then
+            local top = items[#items].value:gsub(" +$", "")
+            if string.equalsi(cwd, top) then
+                table.remove(items, #items)
+            end
         end
     end
 
@@ -503,7 +514,7 @@ local function need_cd_drive(dir)
     local drive = path.getdrive(dir)
     if drive then
         local cwd = os.getcwd()
-        if cwd then
+        if cwd ~= "" then
             local cwd_drive = path.getdrive(cwd)
             if cwd_drive and cwd_drive:lower() == drive:lower() then
                 return

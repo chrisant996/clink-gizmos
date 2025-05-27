@@ -29,7 +29,7 @@ local function need_cd_drive(dir)
     local drive = path.getdrive(dir)
     if drive then
         local cwd = os.getcwd()
-        if cwd then
+        if cwd ~= "" then
             local cwd_drive = path.getdrive(cwd)
             if cwd_drive and cwd_drive:lower() == drive:lower() then
                 return
