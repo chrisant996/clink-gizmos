@@ -85,6 +85,43 @@ If you're not using a Nerd Font yet, consider checking out some of the available
 
 Some of the included scripts are rough prototypes that can be useful, but are not fully functional and/or have potentially significant or dangerous limitations.  These prototype scripts are **disabled by default**, for safety and to avoid interference.  See below for information about each, and for how to enable each script if you wish.
 
+## [direnv.lua](direnv.lua)
+
+_Disabled by default, for security reasons.  To enable it, run `clink set direnv.enable true`._
+
+This is conceptually similar to the direnv tool from https://direnv.net and
+https://github.com/direnv/direnv, but is designed for use with Clink.
+
+The idea is that when changing current directories from one command prompt to
+the next, this script looks for a .env file with environment variables.  If
+it finds one, then it applies environment variables from it to the current
+environment.  When changing away to a different directory, then it unsets any
+environment variables that were applied from the most recent .env file.
+
+By default, direnv starts out disabled and does nothing at all.  To enable
+it, run `clink set direnv.enable true`.  Once enabled, it only works in
+directories it's been told to trust.
+
+By default, direnv starts out not trusting any directories.  It only looks
+for .env files in directories that it has been told to trust.  Using
+<code>direnv allow <em>directory_name</em></code> is how to tell direnv to
+trust a specific directory.  Trust is NOT recursive; trusting a parent
+directory does not establish trust for any child directories beneath it.
+
+The format for a .env file is one variable definition per line, and each
+variable definition is a name, an equal sign, and a value.  For example:
+  VAR_NAME=VALUE
+
+For more information, including a list of available direnv commands, run
+`direnv help`.
+
+The following Clink settings control how this script functions:
+
+Setting | Default | Description
+-|-|-
+`direnv.enable` | `false` | This script is disabled by default.  Run `clink set direnv.enable true` to enable this script.
+`direnv.banner` | `true` | By default direnv shows feedback before the prompt when loading or unloading a .env file for a directory.  Run `clink set direnv.banner false` to disable the feedback.
+
 ## [fishcomplete.lua](fishcomplete.lua)
 
 _Disabled by default.  To enable it, run `clink set fishcomplete.enable true`._
