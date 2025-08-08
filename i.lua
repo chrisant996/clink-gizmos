@@ -51,6 +51,10 @@ i_colors = i_colors or {
 --------------------------------------------------------------------------------
 -- Functions.
 
+local function echo_up()
+    return (clink.getansihost and clink.getansihost() ~= "clink") and " & echo \x1b[2A" or ""
+end
+
 local function i_getcolor(isdir)
     local color = i_colors[isdir]
     if not color then
@@ -126,9 +130,9 @@ local function i_filter(line)
 
     -- Return the adjusted command line.
     local lines = {
-        " pushd \""..dir.."\" >nul & echo \x1b[2A",
+        " pushd \""..dir.."\" >nul"..echo_up(),
         line,
-        " popd >nul & echo \x1b[2A",
+        " popd >nul"..echo_up(),
     }
     return lines, false
 end
