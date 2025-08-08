@@ -33,20 +33,24 @@ add_help("", {
 "  VAR_NAME=VALUE",
 "",
 "Available commands:",
-"  allow             Allow loading .env file from dir.",
-"  deny              Deny loading .env file from dir.",
-"  edit              Open correponding .env file in an editor.",
-"  exec              Execute command after loading .env from dir.",
-"  help              Show this help text.",
-"  list              List allowed directories for .env files.",
-"  reload            Trigger an env reload.",
+"  allow                 Allow loading .env file from dir.",
+"  deny                  Deny loading .env file from dir.",
+"  edit                  Open correponding .env file in an editor.",
+"  exec                  Execute command after loading .env from dir.",
+"  help                  Show this help text.",
+"  list                  List allowed directories for .env files.",
+"  prune                 Prune the trust list to remove outdated allowed files.",
+"  reload                Trigger an env reload.",
 "",
 "For help on a specific command, run 'direnv <command> --help'.",
 "For example 'direnv exec --help'.",
 "",
 "Clink settings for direnv:",
-"  direnv.enable     True enables direnv, or false (the default) disables it.",
-"  direnv.banner     True (the default) shows feedback when loading .env files.",
+"  direnv.enable         True enables direnv, or false (the default) disables it.",
+"  direnv.banner         True (the default) shows feedback when loading .env files.",
+"  direnv.hide_env_diff  True hides env changes, or false (the default) shows",
+"                        which environment variables are applied.",
+"  color.direnv_banner   The color for direnv banner messages.",
 "",
 "Notes:",
 "- The https://direnv.net project supports .envrc shell scripts, but those",
@@ -62,6 +66,11 @@ if not clink.parseline then
     return
 end
 
+local direnv_banner = "0;3;38;5;136"
+
+local standalone = clink and not clink.argmatcher and not clink.arg and true
+if not standalone then
+
 settings.add("direnv.enable", false, "Auto-apply env vars from .env files",
     "When this is enabled and the current directory (or any of its parents)\n"..
     "contains a .env file, then the environment variable assignments listed in\n"..
@@ -69,21 +78,40 @@ settings.add("direnv.enable", false, "Auto-apply env vars from .env files",
     "again to somewhere else, then the variables from the .env file are\n"..
     "automatically cleared.")
 settings.add("direnv.banner", true, "Show feedback when loading .env files")
-settings.add("color.direnv_banner", "0;3;38;5;136", "Color for direnv banner messages")
+settings.add("direnv.hide_env_diff", false, "Hides feedback about env changes")
+settings.add("color.direnv_banner", direnv_banner, "Color for direnv banner messages")
+
+end
 
 local last_dotenv
 local last_dir
 local envvars = {}
+local envrestore = {}
 local trusted = {}
 local provide_line
 
 local norm = "\x1b[m"
+local red = "\x1b[31m"
 
-local function banner(msg)
-    if settings.get("direnv.banner") then
-        local bannercolor = settings.get("color.direnv_banner") or ""
-        clink.print(string.format("\x1b[%sm%s%s", bannercolor, msg, norm))
+local function sgr(code)
+    if not code then
+        return "\x1b[m"
+    elseif string.byte(code) == 0x1b then
+        return code
+    else
+        return "\x1b["..code.."m"
     end
+end
+
+local function banner(msg, force)
+    if force or standalone or settings.get("direnv.banner") then
+        local bannercolor = sgr(standalone and direnv_banner or settings.get("color.direnv_banner"))
+        clink.print(bannercolor..msg..norm)
+    end
+end
+
+local function report_error(msg)
+    clink.print(red.."direnv: error "..msg..norm)
 end
 
 local function strip_trailing_backslash(dir)
@@ -101,18 +129,35 @@ local function get_trust_filename()
     local profile_dir = os.getenv("=clink.profile")
     if profile_dir and profile_dir ~= "" then
         local filename = path.join(profile_dir, "direnv_trust")
-        local label = os.getenv("CLINK_HISTORY_LABEL") or ""
-        label = label:gsub("%p", "")
-        if #label > 0 then
-            label = "-" .. label
+        return filename
+    end
+end
+
+local function is_trusted(name, list)
+    list = list or trusted
+    local index = list[name:lower()]
+    if index then
+        local entry = list[index]
+        local t = os.globfiles(entry.file, 2)
+        if t[1] and t[1].mtime and t[1].mtime == entry.timestamp then
+            return true
         end
-        return filename .. label
+    end
+    -- FUTURE: if inclusion list support is added (a config file listing trusted
+    -- paths and/or trusted path prefixes), then check if name is a symlink and
+    -- compare its target against the inclusion list.
+end
+
+local function make_trust_entry(file)
+    local t = os.globfiles(file, 2)
+    if t[1] and t[1].mtime then
+        return {file=file, timestamp=t[1].mtime}
     end
 end
 
 local function reindex_trust(list)
-    for num, line in ipairs(list) do
-        trusted[line:lower()] = num
+    for num, entry in ipairs(list) do
+        trusted[entry.file:lower()] = num
     end
 end
 
@@ -152,7 +197,10 @@ local function load_trust(callback)
 
     -- Load trusted directories from file.
     for line in f:lines() do
-        table.insert(trusted, line)
+        local name, timestamp = line:match("^(.*)=(.*)$")
+        if name then
+            table.insert(trusted, {file=name, timestamp=tonumber(timestamp)})
+        end
     end
     reindex_trust(trusted)
 
@@ -179,8 +227,8 @@ local function load_trust(callback)
                 return
             end
             -- Write the lines.
-            for _, line in ipairs(trusted) do
-                f:write(line.."\n")
+            for _, e in ipairs(trusted) do
+                f:write(string.format("%s=%s\n", e.file, tostring(e.timestamp)))
             end
             -- Truncate the file.
             if io.truncate then
@@ -205,43 +253,57 @@ local function load_trust(callback)
     return ret, callback_ret
 end
 
-local function allow_trust(dir)
-    dir = (dir and os.getfullpathname(dir)) or ""
-    if dir ~= "" then
-        dir = strip_trailing_backslash(dir)
-        if os.isdir(dir) then
+local function allow_trust(target)
+    local orig_target = target
+    target = (target == "") and "." or target
+    target = (target and os.getfullpathname(target)) or ""
+    if target ~= "" then
+        target = strip_trailing_backslash(target)
+        local isdir = os.isdir(target)
+        local isfile = not isdir and os.isfile(target) and path.getname(target):lower() == ".env"
+        if isdir or isfile then
+            local file
             local ok, found = load_trust(function(list)
-                if not list[dir:lower()] then
-                    table.insert(list, dir)
-                    list[dir:lower()] = #list
+                file = isdir and path.join(target, ".env") or target
+                if not is_trusted(file, list) then
+                    local entry = make_trust_entry(file)
+                    if not entry then
+                        return false, false
+                    end
+                    table.insert(list, entry)
+                    list[file:lower()] = #list
                     return true, false -- Save the updated trust file.
                 else
                     return false, true -- Already trusted.
                 end
             end)
             if ok then
-                print("Added '"..dir.."' to list of directories trusted to load .env files.")
-            elseif found then
-                print("The specified directory is already in the trusted line.")
-            else
-                print("Error trying to allow the specified directory.")
+                print("Added '"..file.."' to the trust list.")
+            elseif not found then
+                report_error("trying to allow '"..target.."'.")
             end
             return
         end
     end
-    print("Directory not recognized.")
+    report_error("'"..(orig_target or "").."' not recognized.")
 end
 
-local function deny_trust(dir)
-    dir = (dir and os.getfullpathname(dir)) or ""
-    if dir ~= "" then
-        dir = strip_trailing_backslash(dir)
-        if os.isdir(dir) then
+local function deny_trust(target)
+    local orig_target = target
+    target = (target == "") and "." or target
+    target = (target and os.getfullpathname(target)) or ""
+    if target ~= "" then
+        target = strip_trailing_backslash(target)
+        local isdir = os.isdir(target)
+        local isfile = not isdir and os.isfile(target) and path.getname(target):lower() == ".env"
+        if isdir or isfile then
+            local file
             local ok, found = load_trust(function(list)
-                local index = list[dir:lower()]
+                file = isdir and path.join(target, ".env") or target
+                local index = list[file:lower()]
                 if index then
                     table.remove(list, index)
-                    list[dir:lower()] = nil
+                    list[file:lower()] = nil
                     reindex_trust(list)
                     return true, true -- Save the updated trust file.
                 else
@@ -249,16 +311,43 @@ local function deny_trust(dir)
                 end
             end)
             if ok then
-                print("Removed '"..dir.."' from the list of directories trusted to load .env files.")
-            elseif not found then
-                print("The specified directory is not in the trusted list.")
-            else
-                print("Error trying to deny the specified directory.")
+                print("Removed '"..file.."' from the trust list.")
+            elseif found then
+                report_error("trying to deny '"..target.."'.")
             end
             return
         end
     end
-    print("Directory not recognized.")
+    report_error("'"..(orig_target or "").."' not recognized.")
+end
+
+local function prune_trust()
+    local removed, kept = 0, 0
+    local ok = load_trust(function(list)
+        for index = #list, 1, -1 do
+            local entry = list[index]
+            local current = make_trust_entry(entry.file)
+            if not current or current.timestamp > entry.timestamp then
+                table.remove(list, index)
+                removed = removed + 1
+            else
+                kept = kept + 1
+            end
+        end
+        if removed > 0 then
+            reindex_trust(list)
+        end
+        return true, true
+    end)
+    if ok then
+        if removed > 0 then
+            print(string.format("Allowed files: removed %u outdated, kept %u up to date.", removed, kept))
+        else
+            print(string.format("Allowed files: verified %u up to date.", kept))
+        end
+    else
+        report_error("trying to prune outdated allowed files.")
+    end
 end
 
 local function find_dotenv(dir)
@@ -266,10 +355,12 @@ local function find_dotenv(dir)
     dir = strip_trailing_backslash(dir)
     local target = dir
     repeat
-        if trusted[target:lower()] then
-            local name = path.join(target, ".env")
-            if os.isfile(name) then
+        local name = path.join(target, ".env")
+        if os.isfile(name) then
+            if is_trusted(name) then
                 return name, dir
+            else
+                return nil, dir, name--[[blocked]]
             end
         end
         local parent = path.toparent(target)
@@ -284,31 +375,68 @@ end
 local function apply_dotenv(dotenv)
     last_dotenv = dotenv
     envvars = {}
+    envrestore = {}
 
     if dotenv then
         local f = io.open(dotenv)
         if f then
+            local order = {}
             for line in f:lines() do
                 local name, value = line:match("^%s*([^=]+)%s*=(.*)$")
                 if name then
-                    envvars[name] = value
+                    local lower = name:lower()
+                    envvars[lower] = value
+                    envrestore[lower] = os.getenv(name) or ""
+                    if not order[lower] then
+                        table.insert(order, name)
+                        order[lower] = true
+                    end
                 end
             end
-            for name, value in pairs(envvars) do
+            local hide_env_diff = settings.get("direnv.hide_env_diff")
+            local diff_added = ""
+            local diff_removed = ""
+            local diff_changed = ""
+            for _, name in ipairs(order) do
+                local lower = name:lower()
+                local value = envvars[lower]
+                if not hide_env_diff then
+                    if envrestore[lower] ~= "" then
+                        if value ~= "" then
+                            diff_changed = diff_changed.." ~"..name
+                        else
+                            diff_removed = diff_removed.." -"..name
+                        end
+                    else
+                        if value ~= "" then
+                            diff_added = diff_added.." +"..name
+                        end
+                    end
+                end
+                value = (value ~= "") and value or nil
                 os.setenv(name, value)
+            end
+            if diff_added ~= "" or diff_removed ~= "" or diff_changed ~= "" then
+                banner(string.format("direnv: set%s", diff_added..diff_removed..diff_changed))
             end
         end
     end
 end
 
 local function unset_dotenv()
-    -- This simply clears variables.  Arguably it would be nice to restore the
-    -- previous values (if any), but reloading scripts would lose old values,
-    -- making the overall outcomes inconsistent.
-    for name, _ in pairs(envvars) do
-        os.setenv(name)
+    -- Any old values to restore are currently only saved in memory in a Lua
+    -- table, so reloading scripts loses them.  Ideally the values could be
+    -- saved such that reloading scripts doesn't lose them.  But the values also
+    -- need to be stored separately for each CMD session, and that creates a bit
+    -- of a challenge for discarding them appropriately and making sure they
+    -- don't carry over to a new and different CMD session that happens to reuse
+    -- the same process ID.
+    for name, value in pairs(envrestore) do
+        value = (value ~= "") and value or nil
+        os.setenv(name, value)
     end
     envvars = {}
+    envrestore = {}
     last_dotenv = nil
 end
 
@@ -317,24 +445,25 @@ local function reload_env(dir, force)
 
     local any
     local orig_dir = dir
-    local dotenv, dir = find_dotenv(dir)
-    if force or (dotenv ~= last_dotenv and dir ~= last_dir) then
+    local dotenv, blocked
+    dotenv, dir, blocked = find_dotenv(dir)
+    if force or (dotenv ~= last_dotenv or dir ~= last_dir) then
         if last_dotenv and not dotenv then
-            force_banner = force
-            banner("-- Unloading envvars from '"..last_dotenv.."'.")
+            --banner("direnv: unloading envvars from '"..last_dotenv.."'", force)
+            banner("direnv: unloading", force)
             any = true
         end
 
         unset_dotenv()
 
         if dotenv then
-            force_banner = force
-            banner("++ Loading envvars from '"..dotenv.."'.")
+            banner("direnv: loading envvars from '"..dotenv.."'", force)
             any = true
         end
         if force and not any then
-            force_banner = force
-            banner("** No .env file found.")
+            banner("direnv: no .env file found", force)
+        elseif blocked then
+            report_error(string.format("%s is blocked; run 'direnv allow' to approve its content.", blocked))
         end
 
         apply_dotenv(dotenv)
@@ -409,6 +538,17 @@ add_help("list", {
 "the 'direnv deny' command.",
 })
 
+add_help("prune", {
+"remove outdated allowed files.",
+"",
+"Usage:",
+"  direnv prune",
+"",
+"Removes entries from the trust list for any files which no longer exist or are",
+"no longer trusted because the file has been modified since it was added to the",
+"trust list.",
+})
+
 add_help("reload", {
 "Trigger an env reload.",
 "",
@@ -481,8 +621,17 @@ local function command_edit(line_state)
         local dir = line_state:getword(3)
         local dotenv = find_dotenv(dir)
         dotenv = dotenv or path.join(os.getcwd(), ".env")
+        local before = make_trust_entry(dotenv)
+
+        -- Launch the editor.
         print(string.format("Edit '%s'...", dotenv))
-        return string.format('  %s "%s"', editor, dotenv), false
+        os.execute(string.format('"%s "%s""', editor, dotenv))
+
+        -- Automatically add to trust list if timestamp changed.
+        local after = make_trust_entry(dotenv)
+        if after and (not before or after.timestamp > before.timestamp) then
+            allow_trust(dotenv)
+        end
     end
 end
 
@@ -498,6 +647,17 @@ local function command_exec(line_state)
     -- Load the environment for the dir.  The next prompt will automatically
     -- reload the environment for the current dir again.
     reload_env(dir)
+
+    -- When the script is run in a standalone Lua engine, the script owns
+    -- responsibility for executing the commands itself.
+    if standalone then
+        local old = os.getcwd()
+        os.chdir(dir)
+        os.execute(exec)
+        os.chdir(old)
+        banner("direnv: reverting envvars")
+        return
+    end
 
     -- Return command lines to execute.
     local lines = {
@@ -522,16 +682,20 @@ local function command_help(arg)
     end
 end
 
-local function command_list(line_state)
+local function command_list()
     if not load_trust() then
-        print("Error trying to list trusted directories.")
+        report_error("trying to list trusted directories.")
     elseif trusted[1] then
-        for _, dir in ipairs(trusted) do
-            print(dir)
+        for _, entry in ipairs(trusted) do
+            print(entry.file)
         end
     else
         print("No trusted directories for loading .env files.")
     end
+end
+
+local function command_prune()
+    prune_trust()
 end
 
 local function command_reload(line_state)
@@ -549,8 +713,33 @@ local direnv_commands = {
     ["exec"]    = command_exec,
     ["help"]    = command_help,
     ["list"]    = command_list,
+    ["prune"]   = command_prune,
     ["reload"]  = command_reload,
 }
+
+local function handle_args(line_state)
+    if line_state:getwordcount() >= 1 then
+        local word = line_state:getword(2)
+        local func = direnv_commands[word]
+        if func then
+            local arg = line_state:getword(3)
+            if arg == "-?" or arg == "--help" then
+                command_help(word)
+            else
+                local sret, bret = func(line_state)
+                if sret then
+                    return sret, bret
+                end
+            end
+        else
+            report_error(string.format("unrecognized command '%s'.", word))
+            print()
+            command_help()
+        end
+    else
+        command_help()
+    end
+end
 
 local function onfilterinput(line)
     if not line:find("direnv") then
@@ -569,50 +758,69 @@ local function onfilterinput(line)
             print("It can be enabled by running 'clink set direnv.enable true'.")
             return "", false
         end
-        if line_state:getwordcount() >= 2 then
-            local word = line_state:getword(2)
-            local func = direnv_commands[word]
-            if func then
-                local arg = line_state:getword(3)
-                if arg == "-?" or arg == "--help" then
-                    command_help(word)
-                else
-                    local sret, bret = func(line_state)
-                    if sret then
-                        return sret, bret
-                    end
-                end
-            end
-        else
-            command_help()
+
+        local sret, bret = handle_args(line_state)
+        if sret then
+            return sret, bret
         end
         return "", false
     end
 end
 
-clink.onbeginedit(onbeginedit)
-clink.onprovideline(onprovideline)
-clink.onfilterinput(onfilterinput)
+if standalone then
+
+    local line = "direnv"
+    for _, word in ipairs(arg) do
+        if not word:find('^"') and word:find("[ \t|&<>]") then
+            word = '"'..word..'"'
+        end
+        line = line.." "..word
+    end
+
+    local commands = clink.parseline(line)
+    if not commands or not commands[1] then
+        return
+    end
+
+    local line_state = commands[1].line_state
+    if line_state then
+        load_trust()
+        local sret, _ = handle_args(line_state)
+        assert(sret == nil)
+    end
+
+else
+
+    clink.onbeginedit(onbeginedit)
+    clink.onprovideline(onprovideline)
+    clink.onfilterinput(onfilterinput)
+
+end
 
 --------------------------------------------------------------------------------
-local help_flags = {
-    { "-?", "Show help text" },
-    { "--help", "Show help text" },
-}
+if not standalone then
 
-local noarg_parser = clink.argmatcher():_addexflags(help_flags):nofiles()
-local dirarg_parser = clink.argmatcher():_addexflags(help_flags):addarg(clink.dirmatches):nofiles()
-local exec_parser = clink.argmatcher():_addexflags(help_flags):addarg(clink.dirmatches):chaincommand()
+    local help_flags = {
+        { "-?", "Show help text" },
+        { "--help", "Show help text" },
+    }
 
-clink.argmatcher("direnv")
-:_addexflags(help_flags)
-:_addexarg({
-    { "allow"..dirarg_parser, " dir", "Allow loading .env file from dir" },
-    { "deny"..dirarg_parser, " dir", "Deny loading .env file from dir" },
-    { "edit"..dirarg_parser, " [dir]", "Open the corresponding .env file into %EDITOR% (or Notepad)" },
-    { "exec"..exec_parser, " dir command [args]", "Execute a command after loading a .env file from dir" },
-    { "help"..noarg_parser, "Show help text" },
-    { "list"..noarg_parser, "List allowed directories for loading a .env file" },
-    { "reload"..dirarg_parser, " [dir]", "Trigger an env reload" },
-})
+    local noarg_parser = clink.argmatcher():_addexflags(help_flags):nofiles()
+    local dirarg_parser = clink.argmatcher():_addexflags(help_flags):addarg(clink.dirmatches):nofiles()
+    local exec_parser = clink.argmatcher():_addexflags(help_flags):addarg(clink.dirmatches):chaincommand()
+
+    clink.argmatcher("direnv")
+    :_addexflags(help_flags)
+    :_addexarg({
+        { "allow"..dirarg_parser, " dir", "Allow loading .env file from dir" },
+        { "deny"..dirarg_parser, " dir", "Deny loading .env file from dir" },
+        { "edit"..dirarg_parser, " [dir]", "Open the corresponding .env file into %EDITOR% (or Notepad)" },
+        { "exec"..exec_parser, " dir command [args]", "Execute a command after loading a .env file from dir" },
+        { "help"..noarg_parser, "Show help text" },
+        { "list"..noarg_parser, "List allowed directories for loading a .env file" },
+        { "prune"..noarg_parser, "Prune the trust list to remove outdated allowed files." },
+        { "reload"..dirarg_parser, " [dir]", "Trigger an env reload" },
+    })
+
+end
 
