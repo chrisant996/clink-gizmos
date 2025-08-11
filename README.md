@@ -93,24 +93,28 @@ This is conceptually similar to the direnv tool from https://direnv.net and
 https://github.com/direnv/direnv, but is designed for use with Clink.
 
 The idea is that when changing current directories from one command prompt to
-the next, this script looks for a .env file with environment variables.  If
-it finds one, then it applies environment variables from it to the current
-environment.  When changing away to a different directory, then it unsets any
-environment variables that were applied from the most recent .env file.
+the next, this script looks for a .env file or .env.cmd file.  If it finds one
+then it applies environment variables from it to the current environment.
+When changing away to a different directory, then it unsets any environment
+variables that were applied from the most recent .env or .env.cmd file.
 
 By default, direnv starts out disabled and does nothing at all.  To enable
 it, run `clink set direnv.enable true`.  Once enabled, it only works in
 directories it's been told to trust.
 
-By default, direnv starts out not trusting any directories.  It only looks
-for .env files in directories that it has been told to trust.  Using
-<code>direnv allow <em>directory_name</em></code> is how to tell direnv to
-trust a specific directory.  Trust is NOT recursive; trusting a parent
-directory does not establish trust for any child directories beneath it.
+By default, direnv starts out with no trust.  It only loads environment
+variables from specific .env or .env.cmd files that have been explicitly
+allowed.  Run `direnv allow directory_name` to tell direnv to allow the .env or
+.env.cmd file in a specific directory, or run `direnv allow path\.env` or
+`direnv allow path\.env.cmd` to allow a specific .env or .env.cmd file.
 
 The format for a .env file is one variable definition per line, and each
 variable definition is a name, an equal sign, and a value.  For example:
   VAR_NAME=VALUE
+
+The format for a .env.cmd file is a normal batch script, but the script is
+executed in a separate hidden CMD session.  Any environment variable changes
+are copied from the hidden CMD into the current CMD session.
 
 For more information, including a list of available direnv commands, run
 `direnv help`.
@@ -120,7 +124,9 @@ The following Clink settings control how this script functions:
 Setting | Default | Description
 -|-|-
 `direnv.enable` | `false` | This script is disabled by default.  Run `clink set direnv.enable true` to enable this script.
-`direnv.banner` | `true` | By default direnv shows feedback before the prompt when loading or unloading a .env file for a directory.  Run `clink set direnv.banner false` to disable the feedback.
+`direnv.banner` | `true` | By default direnv shows feedback before the prompt when loading or unloading a .env or .env.cmd file for a directory.  Run `clink set direnv.banner false` to disable the feedback.
+`direnv.hide_env_diff` | `false` | Hides feedback about env changes.
+`color.direnv_banner` | dark yellow | The color to use for feedback when loading or unloading a .env or .env.cmd file.
 
 ## [fishcomplete.lua](fishcomplete.lua)
 
