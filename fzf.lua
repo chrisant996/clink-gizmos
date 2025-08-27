@@ -48,6 +48,13 @@
 --                              it's the full path name of the exe file.
 --                              For example, c:\tools\fzf.exe or etc.
 --
+--      fzf.allow_unsafe_query  Allows the fzf.exe_location setting to specify a
+--                              file that doesn't end in ".exe".  In that case,
+--                              it tries to still provide strong security
+--                              protections by stripping unsafe characters from
+--                              the input line before sending them to the
+--                              non-exe fzf program.
+--
 --      fzf.show_descriptions   Show match descriptions when available.  Fzf
 --                              searches in the description text as well.
 --
@@ -151,6 +158,11 @@ maybe_add('fzf.height', '40%', 'Height to use for the --height flag')
 maybe_add('fzf.exe_location', '', 'Location of fzf.exe if not on the PATH',
           "This isn't just a directory name, it's the full path name of the\n"..
           "exe file.  For example, c:\\tools\\fzf.exe or etc.")
+maybe_add('fzf.allow_unsafe_query', false, 'Allow fzf.exe_location to not be an EXE file',
+          "Allows the fzf.exe_location setting to not end in \".exe\".  In that\n"..
+          "case, it tries to still provide strong security protections by stripping\n"..
+          "unsafe characters from the input line before sending them to the non-exe\n"..
+          "fzf program.")
 
 if console.cellcount and console.plaintext then
     maybe_add('fzf.show_descriptions', true, 'Show match descriptions when available',
@@ -307,7 +319,7 @@ local function maybe_strip_icon(str)
     return str
 end
 
-local function make_query_string(rl_buffer)
+local function make_query_string(rl_buffer, unsafe)
     local s = rl_buffer:getbuffer()
 
     -- Must strip % because there's no way to escape % when the command line
@@ -315,7 +327,13 @@ local function make_query_string(rl_buffer)
     -- This is the only thing that gets dropped; everything else gets escaped.
     s = s:gsub('%%', '')
 
-    if #s > 0 then
+    -- If the fzf command name isn't an .exe file then it may be able to safely
+    -- handle certain characters in the query string.  In that case, strip them,
+    -- and rely on fzf's fuzzy matching.
+    if unsafe then
+        s = s:gsub('[%%+=;,^|&<>"]', '')
+        s = s:gsub('\\+$', '')
+    elseif #s > 0 then
         -- Must double ^ so it roundtrips correctly.
         s = s:gsub('%^', '^^')
 
@@ -351,7 +369,9 @@ local function make_query_string(rl_buffer)
         if pre and suf then
             s = pre..suf..suf
         end
+    end
 
+    if #s > 0 then
         s = '--query "'..s..'"'
     end
 
@@ -366,8 +386,14 @@ local function get_fzf(mode, addl_options)
     command = command:gsub('"', '')
 
     -- It's important to invoke an .exe file, otherwise quoting for --query can
-    -- malfunction and potentially fall into a code injection situation.
-    if path.getname(command) ~= command then
+    -- malfunction and potentially fall into a code injection situation.  But if
+    -- a non-exe file is specified and the fzf.allow_unsafe_query setting is
+    -- enabled, then allow the non-exe file and compensate by stripping certain
+    -- unsafe characters from the query string.
+    local unsafe
+    if settings.get('fzf.allow_unsafe_query') then
+        unsafe = (path.getextension(command):lower() ~= ".exe")
+    elseif path.getname(command) ~= command then
         local command_path = path.toparent(command)
         command = path.join(command_path, path.getbasename(command)..".exe")
     else
@@ -408,7 +434,7 @@ local function get_fzf(mode, addl_options)
         command = join_str(command, options)
     end
 
-    return command
+    return command, unsafe
 end
 
 local function get_clink()
@@ -729,8 +755,9 @@ function fzf_history(rl_buffer)
     -- This produces a '--query' string by stripping certain problematic
     -- characters from the input line.  This still does a good job of matching,
     -- because fzf uses fuzzy matching.
-    local qs = make_query_string(rl_buffer)
-    local r = io.popen('2>nul '..history..' | '..get_fzf('history', del_binding)..' -i --tac '..qs)
+    local fzf_command, unsafe = get_fzf('history', del_binding)
+    local qs = make_query_string(rl_buffer, unsafe)
+    local r = io.popen('2>nul '..history..' | '..fzf_command..' -i --tac '..qs)
     if not r then
         rl_buffer:ding()
         return
