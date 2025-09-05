@@ -118,6 +118,7 @@ local function collect_tips(external, seen)
         ["yank-last-arg"] = true,
         ["operate-and-get-next"] = true,
         ["clink-select-complete"] = true,
+        ["clink-toggle-suggestion-list"] = true,
         ["undo"] = true,
         ["add-history"] = true,
         ["remove-history"] = true,
