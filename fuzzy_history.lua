@@ -99,7 +99,7 @@ end
 local sug = clink.suggester('fuzzy_history')
 
 --------------------------------------------------------------------------------
-function sug:suggest(line_state, matches) -- luacheck: no unused
+function sug:suggest(line_state, matches, limit) -- luacheck: no unused
     -- If empty or only spaces there's nothing to match.
     local line = line_state:getline()
     if not line:match('[^ ]') then
@@ -170,8 +170,13 @@ function sug:suggest(line_state, matches) -- luacheck: no unused
         max_time = max_time / 1000
     end
 
+    if limit then
+        limit = math.min(2, limit)
+    end
+
     local tick = os.clock()
     local batch = 0
+    local results = {}
     for i = upperbound, lowerbound, -1 do
         local h = rl.gethistoryitems(i, i)[1]
         local q = 0
@@ -225,8 +230,17 @@ function sug:suggest(line_state, matches) -- luacheck: no unused
                         end
                     end
                     suggestion = line:sub(1, line_state:getcursor() - 1)..suggestion
-                    log_if_expensive(tick, true, upperbound + 1 - i)
-                    return suggestion, 1
+                    if limit then
+                        local highlight = { s, line_state:getcursor() - s }
+                        table.insert(results, { suggestion=suggestion, offset=1, highlight=highlight })
+                        limit = limit - 1
+                        if limit <= 0 then
+                            break
+                        end
+                    else
+                        log_if_expensive(tick, true, upperbound + 1 - i)
+                        return suggestion, 1
+                    end
                 end
             end
         end
@@ -241,4 +255,7 @@ function sug:suggest(line_state, matches) -- luacheck: no unused
     end
 
     log_if_expensive(tick, false, upperbound + 1 - lowerbound)
+    if limit then
+        return results
+    end
 end
