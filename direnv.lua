@@ -128,6 +128,28 @@ local function echo_up()
 end
 
 --------------------------------------------------------------------------------
+local function save_envrestore()
+    if clink.opensessionstream then
+        local e = clink.opensessionstream("direnv_restore", "w")
+        if e then
+            for name, value in pairs(envrestore) do
+                e:write(string.format("%s=%s\n", name, value))
+            end
+            e:close()
+        end
+    end
+end
+
+local function clear_envrestore()
+    if clink.opensessionstream then
+        local e = clink.opensessionstream("direnv_restore", "w")
+        if e then
+            e:close()
+        end
+    end
+end
+
+--------------------------------------------------------------------------------
 local function get_trust_filename()
     local profile_dir = os.getenv("=clink.profile")
     if profile_dir and profile_dir ~= "" then
@@ -531,6 +553,9 @@ local function apply_dotenv(dotenv)
         os.setenv(name, value)
     end
 
+    -- Save envrestore in a sessionstream, if available.
+    save_envrestore()
+
     -- Optionally print a list of added/removed/changed variables.
     if diff_added ~= "" or diff_removed ~= "" or diff_changed ~= "" then
         banner(string.format("direnv: set%s", diff_added..diff_removed..diff_changed))
@@ -538,18 +563,14 @@ local function apply_dotenv(dotenv)
 end
 
 local function unset_dotenv()
-    -- Any old values to restore are currently only saved in memory in a Lua
-    -- table, so reloading scripts loses them.  Ideally the values could be
-    -- saved such that reloading scripts doesn't lose them.  But the values also
-    -- need to be stored separately for each CMD session, and that creates a bit
-    -- of a challenge for discarding them appropriately and making sure they
-    -- don't carry over to a new and different CMD session that happens to reuse
-    -- the same process ID.
+    -- Just keep the old values in memory in a Lua table.  Reloading scripts
+    -- loses them, but a newer version of Clink provides per-session streams
+    -- which survive across creating a new Lua VM.
     for name, value in pairs(envrestore) do
         value = (value ~= "") and value or nil
         os.setenv(name, value)
     end
-    envrestore = {}
+    clear_envrestore()
     last_dotenv = nil
 end
 
@@ -923,6 +944,21 @@ end
 
 --------------------------------------------------------------------------------
 if not standalone then
+
+    envrestore = {}
+    if clink.opensessionstream then
+        local e = clink.opensessionstream("direnv_restore", "r")
+        if e then
+            for line in e:lines() do
+                local name, value = line:match("^([^=]+)=(.*)$")
+                if name then
+                    value = value or ""
+                    envrestore[name] = value
+                end
+            end
+            e:close()
+        end
+    end
 
     local help_flags = {
         { "-?", "Show help text" },
