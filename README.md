@@ -27,7 +27,8 @@ The "modules" subdirectory contains helper scripts that are used by the scripts 
 
 # Features
 
-Each script file contains usage information in comments at the top of the script file.
+> [!TIP]
+> Each script file contains usage and/or customization information in comments at the top of the script file.
 
 Script Name | Description
 -|-
@@ -47,6 +48,9 @@ Script Name | Description
 [luaexec.lua](luaexec.lua) | Some handy debugging aids to use with Clink Lua scripts.  Refer to the usage information in the script file for details.
 [matchicons.lua](matchicons.lua) | Can show nerd font icons in file and directory completions.  Run `clink set matchicons.enable true` to enable it.  Refer to the usage information in the script file for details.
 [noclink.lua](noclink.lua) | This and the [noclink.cmd](noclink.cmd) script let you temporarily disable/reenable Clink (or Clink's prompt filtering).  Run `noclink -?` for help.
+[scmapi.lua](scmapi.lua) | Allows other scripts to automatically add support for other source control systems into [Clink's Lua `git` APIs](https://chrisant996.github.io/clink/clink.html#git).
+[scmhg.lua](scmhg.lua) | Uses scmapi.lua to add support for `hg` ([Mercurial](https://www.mercurial-scm.org/)).
+[scmsvn.lua](scmsvn.lua) | Uses scmapi.lua to add support for `svn` ([Subversion](https://subversion.apache.org/)).
 [show_tips.lua](show_tips.lua) | Shows a tip about Clink each time Clink is injected.
 [tilde_autoexpand.lua](tilde_autoexpand.lua) | Automatically expands tildes into the user's home directory (disabled by default; see usage information in the script file for how to enable it).
 [toggle_short.lua](toggle_short.lua) | Adds a command to toggle the word under the cursor between long and short path names.  The default key binding is <kbd>Ctrl</kbd>-<kbd>Alt</kbd>-<kbd>A</kbd>.
