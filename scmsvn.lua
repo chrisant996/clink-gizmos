@@ -1,5 +1,14 @@
 --------------------------------------------------------------------------------
 -- Adds Subversion support into Clink's "git" APIs.
+--
+-- This is disabled by default, to avoid performance cost for users who don't
+-- need Subversion support.
+--
+-- To enable Subversion support, do either of these:
+--  1. Run `clink set scmapi.svn true` to enable it for the Clink profile, and
+--     then either start a new Clink session or press CTRL-X,CTRL-R to reload.
+--  2. Run `set SCMAPI_SVN_ENABLE=1` to enable it for the current session, and
+--     then press CTRL-X,CTRL-R to reload.
 
 local scmapi = require("scmapi_module")
 if not scmapi then
@@ -7,9 +16,11 @@ if not scmapi then
 end
 
 settings.add("scmapi.svn", false, "Enable Subversion support in prompts",
-             "Changing this takes effect for the next Clink session.")
-settings.add("scmapi.svn_path", "", "Path to svn program",
-             "Set this if svn is not found along the system PATH.")
+             "Changing this takes effect for the next Clink session.\n"..
+             "(Or set %SCMAPI_SVN_ENABLE% to any value.)")
+settings.add("scmapi.svn_path", "", "Full path and filename to svn program",
+             "Set this if svn is not found along the system PATH.\n"..
+             "(Or set %SCMAPI_SVN_PATH% to the full path and filename.)")
 settings.add("scmapi.svn_quiet", false, "Ignores untracked items")
 
 if not settings.get("scmapi.svn") and not os.getenv("SCMAPI_SVN_ENABLE") then
@@ -22,11 +33,11 @@ end
 local api_svn = {}
 
 local function get_svn_program()
-    local pgm = settings.get("scmapi.svn_path")
+    local pgm = os.getenv("SCMAPI_SVN_PATH") or settings.get("scmapi.svn_path")
+    pgm = pgm and pgm:gsub('"', '')
     if not pgm or pgm == "" then
         pgm = "svn"
     end
-    pgm = pgm:gsub('"', '')
     if rl.needquotes and rl.needquotes(pgm) then
         pgm = '"'..pgm..'"'
     end
@@ -46,6 +57,7 @@ local function test_svn(dir)
 end
 
 local function get_svn_branch()
+    -- Return the branch information.
     local pipe = io.popenyield(string.format("2>nul %s info", get_svn_program()))
     if pipe then
         local branch
@@ -70,7 +82,8 @@ end
 local function get_svn_status()
     local status = {}
 
-    local pipe = io.popenyield(string.format("2>nul %s status%s", get_svn_program(), get_flags()))
+    local cmd = string.format("2>nul %s status%s", get_svn_program(), get_flags())
+    local pipe, func = io.popenyield(cmd)
     if pipe then
         for line in pipe:lines() do
             local t = line:sub(1, 1)
@@ -96,7 +109,16 @@ local function get_svn_status()
                 end
             end
         end
-        pipe:close()
+
+        if type(func) == "function" then
+            local ok, s, n = func()
+            if not ok and s == "exit" and n ~= 0 then
+                log.info("failure trying to run '"..cmd.."', exit code "..tostring(n))
+                return nil
+            end
+        else
+            pipe:close()
+        end
 
         status.dirty = status.working and true or false
 

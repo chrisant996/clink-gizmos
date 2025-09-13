@@ -1,5 +1,14 @@
 --------------------------------------------------------------------------------
 -- Adds Mercurial support into Clink's "git" APIs.
+--
+-- This is disabled by default, to avoid performance cost for users who don't
+-- need Mercurial support.
+--
+-- To enable Mercurial support, do either of these:
+--  1. Run `clink set scmapi.hg true` to enable it for the Clink profile, and
+--     then either start a new Clink session or press CTRL-X,CTRL-R to reload.
+--  2. Run `set SCMAPI_HG_ENABLE=1` to enable it for the current session, and
+--     then press CTRL-X,CTRL-R to reload.
 
 local scmapi = require("scmapi_module")
 if not scmapi then
@@ -7,9 +16,11 @@ if not scmapi then
 end
 
 settings.add("scmapi.hg", false, "Enable Mercurial support in prompts",
-             "Changing this takes effect for the next Clink session.")
-settings.add("scmapi.hg_path", "", "Path to hg program",
-             "Set this if hg is not found along the system PATH.")
+             "Changing this takes effect for the next Clink session.\n"..
+             "(Or set %SCMAPI_HG_ENABLE% to any value.)")
+settings.add("scmapi.hg_path", "", "Full path and filename to hg program",
+             "Set this if hg is not found along the system PATH.\n"..
+             "(Or set %SCMAPI_HG_PATH% to the full path and filename.)")
 settings.add("scmapi.hg_quiet", false, "Ignores untracked items")
 
 if not settings.get("scmapi.hg") and not os.getenv("SCMAPI_HG_ENABLE") then
@@ -22,11 +33,11 @@ end
 local api_hg = {}
 
 local function get_hg_program()
-    local pgm = settings.get("scmapi.hg_path")
+    local pgm = os.getenv("SCMAPI_HG_PATH") or settings.get("scmapi.hg_path")
+    pgm = pgm and pgm:gsub('"', '')
     if not pgm or pgm == "" then
         pgm = "hg"
     end
-    pgm = pgm:gsub('"', '')
     if rl.needquotes and rl.needquotes(pgm) then
         pgm = '"'..pgm..'"'
     end
@@ -74,7 +85,8 @@ local function get_hg_status()
     -- "hg-prompt" extension to get more information, such as any applied mq
     -- patches.  Here's an example of that:
     -- "hg prompt \"{branch}{status}{|{patch}}{update}\""
-    local pipe = io.popenyield(string.format("2>&1 %s status%s", get_hg_program(), get_flags()))
+    local cmd = string.format("2>&1 %s status%s", get_hg_program(), get_flags())
+    local pipe, func = io.popenyield(cmd)
     if pipe then
         for line in pipe:lines() do
             local t = line:sub(1, 1)
@@ -88,7 +100,16 @@ local function get_hg_status()
                 add_working(status, "untracked")
             end
         end
-        pipe:close()
+
+        if type(func) == "function" then
+            local ok, s, n = func()
+            if not ok and s == "exit" and n ~= 0 then
+                log.info("failure trying to run '"..cmd.."', exit code "..tostring(n))
+                return nil
+            end
+        else
+            pipe:close()
+        end
 
         status.dirty = status.working and true or false
 
