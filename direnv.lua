@@ -147,6 +147,7 @@ local function clear_envrestore()
             e:close()
         end
     end
+    envrestore = {}
 end
 
 --------------------------------------------------------------------------------
