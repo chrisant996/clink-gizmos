@@ -336,28 +336,33 @@ function git.getstatus(no_untracked, include_submodules)
     local status = api.getstatus(no_untracked, include_submodules)
     if not status then return end
 
+    -- Some fields show up in two places.  If the registered scmapi handle
+    -- provided only one of the fields, then for certain fields we can help
+    -- remedy the mistake by synthesizing the other fields (it isn't possible
+    -- for all fields).
     if status.working then
         if not status.tracked then
-            status.tracked = sum(status.working) - (status.working.untracked or 0)
+            local tracked = sum(status.working) - (status.working.untracked or 0)
+            status.tracked = (tracked > 0) and tracked or nil
         end
-        if not status.untracked then
-            status.untracked = status.working.untracked
+        if not status.untracked and type(status.working.untracked) == "number" then
+            status.untracked = (status.working.untracked > 0) and status.working.untracked or nil
         end
-        if not status.conflict then
-            status.conflict = status.working.conflict
+        if not status.conflict and type(status.working.conflict) == "number" then
+            status.conflict = (status.working.conflict > 0) and status.working.conflict or nil
         end
     else
-        if type(status.untracked) == "number" then
-            status.working = status.working or {}
-            status.working.untracked = status.untracked
-        end
-        if type(status.tracked) == "number" then
-            status.working = status.working or {}
-            status.working.modify = status.tracked
-        end
-        if type(status.conflict) == "number" then
-            status.working = status.working or {}
-            status.working.conflict = status.conflict
+        local untracked = (type(status.untracked) == "number") and status.untracked or 0
+        local tracked = (type(status.tracked) == "number") and status.tracked or 0
+        local conflict = (type(status.conflict) == "number") and status.conflict or 0
+        if untracked > 0 or tracked > 0 or conflict > 0 then
+            status.working = {
+                add=0,
+                modify=tracked,
+                delete=0,
+                conflict=conflict,
+                untracked=untracked,
+            }
         end
     end
 
