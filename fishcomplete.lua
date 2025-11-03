@@ -819,4 +819,13 @@ local function oncommand(_, info)
     end
 end
 
-clink.oncommand(oncommand)
+if clink.argmatcherloader then
+    -- argmatcherloader can handle doskey aliases as well, and doesn't have to
+    -- wait for a space after the command word.
+    -- Using 40 puts this ahead of carapace (50).
+    clink.argmatcherloader(40, function(command_word, quoted)
+        oncommand(nil, { command=command_word, file=command_word, quoted=quoted, type="executable" })
+    end)
+else
+    clink.oncommand(oncommand)
+end
