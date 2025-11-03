@@ -300,7 +300,14 @@ if load_config() then
         -- Using 45 goes ahead of carapace (50), but behind most other things,
         -- giving auto_argmatcher a relatively low priority overall.
         clink.argmatcherloader(45, function(command_word, quoted)
-            oncommand(nil, { command=command_word, file=command_word, quoted=quoted, type="executable", only_full_paths=true })
+            local info = {
+                command = command_word,
+                file = command_word,
+                quoted = quoted,
+                type = "executable",
+                only_full_paths = true,
+            }
+            oncommand(nil, info)
         end)
     end
 end
