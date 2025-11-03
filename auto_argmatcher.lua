@@ -264,24 +264,43 @@ local function oncommand(_, info)
 
     local file = clink.lower(info.file)
     if file and file ~= "" then
-        local entry = _config[file] or _config[path.getname(file)] or _config[path.getbasename(file)]
+        local entry = _config[file]
+        if not entry and not info.only_full_paths then
+            entry = _config[path.getname(file)] or _config[path.getbasename(file)]
+        end
         if entry then
             build_argmatcher(entry)
             return
         end
     end
 
-    local command = clink.lower(path.getname(info.command))
-    if command and command ~= "" then
-        local entry = _config[command] or _config[path.getbasename(command)]
-        if entry then
-            build_argmatcher(entry)
-            return
+    if not info.only_full_paths then
+        local command = clink.lower(path.getname(info.command))
+        if command and command ~= "" then
+            local entry = _config[command] or _config[path.getbasename(command)]
+            if entry then
+                build_argmatcher(entry)
+                return
+            end
         end
     end
 end
 
 --------------------------------------------------------------------------------
 if load_config() then
+    -- This waits until a space after the command name.  This avoids running
+    -- external programs until the command word is complete.
     clink.oncommand(oncommand)
+
+    -- This allows running external programs immediately while typing IF AND
+    -- ONLY IF the config file specifies a full path.  This gives the config
+    -- file a way to override carapace, for example, for certain programs that
+    -- carapace may get wrong.
+    if clink.argmatcherloader then
+        -- Using 45 goes ahead of carapace (50), but behind most other things,
+        -- giving auto_argmatcher a relatively low priority overall.
+        clink.argmatcherloader(45, function(command_word, quoted)
+            oncommand(nil, { command=command_word, file=command_word, quoted=quoted, type="executable", only_full_paths=true })
+        end)
+    end
 end
