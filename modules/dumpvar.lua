@@ -28,35 +28,54 @@
 --          dv.type_colors = "..."
 --      end
 --
--- If you configure dumpvar, consider using a wrapper function to save/restore
--- pre-existing configuration, to avoid interfering with other scripts that may
--- also be using dumpvar as well.
+--  Note:   If you configure dumpvar, consider using a wrapper function to
+--          save/restore pre-existing configuration, to avoid interfering with
+--          other scripts that may also be using dumpvar as well.
+--
+-- Or, you can provide options directly:
+--
+--      require("dumpvar")
+--
+--      local options = {
+--          type_colors = "..."         -- Or set it to false (not nil) to disable colors.
+--          write = function(text)      -- Function to write text (do not add newline).
+--              clink.print(text, NONL)
+--          end
+--      }
+--
+--      dumpvarex(options, ...)         -- The ... represents the same arguments dumpvar() accepts.
 
 local exports = {}
 
 local default_colors = "string=38;5;172 table=38;5;40 boolean=38;5;39 number=38;5;141 function=38;5;27 thread=38;5;203 types=38;5;244 nil=38;5;196" -- luacheck: no max line length
 
-local norm = "\x1b[m"
+local show_type
+local sort_tables
 local type_colors = {}
+local write
 
 local function sgr(code)
     return "\x1b["..(code or "").."m"
 end
 
 local function format_var_name(var_name, var_type)
-    local c = type_colors[var_type] or norm
+    local c = type_colors[var_type] or type_colors.reset
     local out = c..tostring(var_name)
 
-    if exports.show_type then
-        out = out..(type_colors["type"] or norm).." ("..var_type..")"
+    if show_type then
+        out = out..(type_colors["type"] or type_colors.reset).." ("..var_type..")"
     end
 
-    out = out..sgr()
+    out = out..type_colors.reset
     return out
 end
 
 local function comparator(a, b)
     return tostring(a) < tostring(b)
+end
+
+local function printtext(text)
+    clink.print(text, NONL) -- luacheck: globals NONL
 end
 
 local function dumpvar_internal(value, depth, name, indent, comma)
@@ -79,13 +98,13 @@ local function dumpvar_internal(value, depth, name, indent, comma)
     local t = type(value)
     if t == "table" and depth > 0 then
         if name then
-            clink.print(indent..format_var_name(name, t).." = { "..tostring(value))
+            write(string.format("%s%s = { %s\n", indent, format_var_name(name, t), tostring(value)))
         else
-            clink.print(indent.."{ "..tostring(value))
+            write(string.format("%s{ %s\n", indent, tostring(value)))
         end
         local next_indent = indent.."  "
         depth = depth - 1
-        if exports.sort_tables then
+        if sort_tables then
             local keys = {}
             for n,v in pairs(value) do
                 if v ~= _G then
@@ -110,7 +129,7 @@ local function dumpvar_internal(value, depth, name, indent, comma)
                 end
             end
         end
-        clink.print(indent.."}"..comma)
+        write(string.format("%s}%s\n", indent, comma))
         return
     end
 
@@ -126,31 +145,62 @@ local function dumpvar_internal(value, depth, name, indent, comma)
         end
     end
 
-    if name then clink.print(indent..format_var_name(name, t).." = ", NONL) end -- luacheck: globals NONL
-    clink.print(value..comma)
+    if name then write(string.format("%s%s = ", indent, format_var_name(name, t))) end -- luacheck: globals NONL
+    write(string.format("%s%s\n", value, comma))
+end
+
+local function iif(expr, if_true, if_false)
+    if expr then
+        return if_true
+    else
+        return if_false
+    end
+end
+
+-- luacheck: globals dumpvarex
+function dumpvarex(options, value, depth, name, indent, comma)
+    do
+        show_type = iif(options.show_type == nil, true, options.show_type)
+        sort_tables = iif(options.sort_tables == nil, true, options.sort_tables)
+
+        local colors = iif(options.type_colors == false, nil, options.type_colors or default_colors)
+        type_colors = {}
+        if colors == nil then
+            type_colors.reset = ""
+        else
+            local types = string.explode(colors, ", ")
+            for _,v in ipairs(types) do
+                local c = string.explode(v, "=")
+                if c[1] then
+                    if c[2] then
+                    type_colors[c[1]] = sgr(";"..c[2])
+                    else
+                        type_colors[c[1]] = sgr()
+                    end
+                end
+            end
+            type_colors.reset = sgr()
+        end
+
+        write = options.write or printtext
+    end
+
+    dumpvar_internal(value, depth, name, indent, comma)
 end
 
 -- luacheck: globals dumpvar
 function dumpvar(value, depth, name, indent, comma)
-    do
-        if exports.init then
-            exports.init()
-        end
-
-        local colors = exports.type_colors or default_colors
-        local types = string.explode(colors, ", ")
-        for _,v in ipairs(types) do
-            local c = string.explode(v, "=")
-            type_colors[c[1]] = sgr(";"..c[2])
-        end
+    if exports.init then
+        exports.init()
     end
 
-    dumpvar_internal(value, depth, name, indent, comma)
+    dumpvarex(exports, value, depth, name, indent, comma)
 end
 
 exports.init = function() end
 exports.show_type = true
 exports.sort_tables = true
 exports.type_colors = default_colors
+exports.write = printtext
 
 return exports
