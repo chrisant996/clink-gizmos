@@ -541,13 +541,7 @@ if standalone then
                 first = nil
                 o:write('-- luacheck: no max line length\n')
                 o:write('\n')
-                o:write('local function try_require(module)\n')
-                o:write('  local r\n')
-                o:write('  pcall(function() r = require(module) end)\n')
-                o:write('  return r\n')
-                o:write('end\n')
-                o:write('\n')
-                o:write('try_require("arghelper")\n')
+                o:write('pcall(require, "arghelper")\n')
                 o:write('\n')
             end
 
