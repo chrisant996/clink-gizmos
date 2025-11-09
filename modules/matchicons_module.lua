@@ -34,9 +34,20 @@
 --          matchicons.addicons(matches)
 --      end
 --
--- This gets the icon for a file or directory match.
+-- This gets the icon for a file or directory match:
 --
 --      local icon = matchicons.geticon(match)
+--
+-- This gets the icon spacing that's currently configured:
+--
+--      local spacing = matchicons.getspacing()
+--
+-- If an argmatcher wants to force including icons even when the
+-- `matchicons.enable` setting is false, it can use these functions:
+--
+--      local am = clink.argmatcher()
+--      am:addarg(matchicons.filematches)
+--      am:addarg(matchicons.dirmatches)
 --
 -- Starting in the October 2025 version, the code has been moved to a Lua module
 -- so that it can be loaded early, before any other scripts try to use the
@@ -57,7 +68,7 @@
 -- generate custom display strings themselves.
 --------------------------------------------------------------------------------
 
-if not settings.add then
+if not clink.ondisplaymatches then
     log.info("matchicons_module.lua requires a newer version of Clink; please upgrade.")
     return
 end
@@ -68,6 +79,11 @@ settings.add("matchicons.enable", false,
 
 --luacheck: globals matchicons
 matchicons = {}
+
+local already_added = {} -- Prevents adding an icon to the same match more than once.
+
+local UNKNOWN_ICON = ""
+local ALIAS_ICON = "="
 
 local NERDFONTICONS =
 {
@@ -1059,7 +1075,7 @@ end
 
 local function backfill_icons(matches)
     for _, m in ipairs(matches) do
-        if m.type then
+        if m.type and (not m.display or not already_added[m.display]) then
             local icon
             local text = m.display or m.match
 
@@ -1068,11 +1084,11 @@ local function backfill_icons(matches)
 
             -- Choose icons for word, arg, cmd, alias, and none match types.
             if m.type:find("alias") then
-                icon = "="
+                icon = ALIAS_ICON
             elseif m.type:find("cmd") then
                 icon = get_icon("OS_WINDOWS_CMD")
             elseif not m.type:find("file") and not m.type:find("dir") then
-                icon = ""
+                icon = UNKNOWN_ICON
             end
 
             -- If an icon was chosen, jam it together with a color and the match
@@ -1083,27 +1099,39 @@ local function backfill_icons(matches)
             end
         end
     end
+end
+
+local function ondisplaymatches(matches)
+    backfill_icons(matches)
+    already_added = {}
     return matches
 end
 
-local function init(nobackfill)
-    if settings.get("matchicons.enable") then
-        nerd_fonts_version = tonumber(os.getenv("DIRX_NERD_FONTS_VERSION") or "") or 0
-        if nerd_fonts_version ~= 2 then
-            nerd_fonts_version = 3
-        end
+local function init_metrics()
+    nerd_fonts_version = (os.getenv("MATCHICONS_NERD_FONTS_VERSION") or
+                          os.getenv("DIRX_NERD_FONTS_VERSION"))
+    nerd_fonts_version = tonumber(nerd_fonts_version or 0)
+    if nerd_fonts_version ~= 2 then
+        nerd_fonts_version = 3
+    end
 
-        spacing = os.getenv("DIRX_ICON_SPACING") or os.getenv("EZA_ICON_SPACING") or os.getenv("EXA_ICON_SPACING")
-        spacing = tonumber(spacing or "") or 0
-        if spacing < 1 then
-            spacing = 1
-        elseif spacing > 4 then
-            spacing = 4
-        end
-        spacing = string.rep(" ", spacing)
+    spacing = (os.getenv("MATCHICONS_ICON_SPACING") or
+               os.getenv("DIRX_ICON_SPACING") or
+               os.getenv("EZA_ICON_SPACING") or
+               os.getenv("EXA_ICON_SPACING"))
+    spacing = tonumber(spacing or "") or 0
+    if spacing < 1 then
+        spacing = 1
+    elseif spacing > 4 then
+        spacing = 4
+    end
+    spacing = string.rep(" ", spacing)
+end
 
+local function init(nobackfill, force)
+    if force or settings.get("matchicons.enable") then
         if not nobackfill then
-            clink.ondisplaymatches(backfill_icons)
+            clink.ondisplaymatches(ondisplaymatches)
         end
         return true
     end
@@ -1131,10 +1159,10 @@ local function get_match_icon(m)
     end
 end
 
-local function add_icons(matches, nobackfill)
-    if init(nobackfill) then
+local function add_icons(matches, nobackfill, force)
+    if init(nobackfill, force) then
         for _, m in ipairs(matches) do
-            if m.type and not m.__addedicon then
+            if m.type and (not m.display or not already_added[m.display]) then
                 -- See documentation for info on how match type strings work.
                 -- https://chrisant996.github.io/clink/clink.html#builder:addmatch
 
@@ -1166,7 +1194,7 @@ local function add_icons(matches, nobackfill)
                 if icon then
                     local color = rl.getmatchcolor(m)
                     m.display = "\x1b[m"..color..icon..spacing..text
-                    m.__addedicon = true
+                    already_added[m.display] = true
                 end
             end
         end
@@ -1187,6 +1215,12 @@ local original_filematches = clink.filematches
 local original_dirmatchesexact = clink.dirmatchesexact
 local original_filematchesexact = clink.filematchesexact
 
+-- Re-init at each new prompt.
+clink.onbeginedit(function()
+    init_metrics()
+    already_added = {}  -- Clear the "already added" cache.
+end)
+
 -- Replace the functions with variants that add icons.
 clink.dirmatches = function (word)
     return add_icons(original_dirmatches(word))
@@ -1205,6 +1239,16 @@ if original_filematchesexact then
     end
 end
 
+matchicons.initmetrics = init_metrics
+
+matchicons.dirmatches = function(...)
+    return add_icons(original_dirmatches(...), nil, true)
+end
+
+matchicons.filematches = function(...)
+    return add_icons(original_filematches(...), nil, true)
+end
+
 matchicons.geticon = function(match)
     if type(match) == "table" then
         return get_match_icon(match)
@@ -1213,12 +1257,22 @@ matchicons.geticon = function(match)
     end
 end
 
-matchicons.addicons = function(matches)
-    return add_icons(matches, true)
+matchicons.getspacing = function()
+    return spacing
 end
 
-matchicons.addicontomatch = function (m, icon, color)
-    if init(true) and not m.__addedicon then
+matchicons.getnerdfontsversion = function()
+    return nerd_fonts_version
+end
+
+matchicons.addicons = function(matches, force)
+    return add_icons(matches, true, force)
+end
+
+matchicons.addicontomatch = function (m, icon, color, force)
+    if type(m) == "table" and
+            (init(true, force)) and
+            (not m.display or not already_added[m.display]) then
         -- See documentation for info on how match type strings work.
         -- https://chrisant996.github.io/clink/clink.html#builder:addmatch
 
@@ -1245,11 +1299,12 @@ matchicons.addicontomatch = function (m, icon, color)
                     color = "\x1b[m"
                 end
                 m.display = color..icon..spacing..text
-                m.__addedicon = true
+                already_added[m.display] = true
             end
         end
     end
     return m
 end
 
+init_metrics()
 return matchicons
