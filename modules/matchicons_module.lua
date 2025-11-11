@@ -40,14 +40,47 @@
 --
 -- This gets the icon spacing that's currently configured:
 --
---      local spacing = matchicons.getspacing()
+--      local spacing, extra_icon_spacing = matchicons.getspacing()
+--
+-- This sets up to 2 extra spaces after icons:
+--
+--      matchicons.setextraiconspacing(1)   -- Adds 1 space after icons.
 --
 -- If an argmatcher wants to force including icons even when the
--- `matchicons.enable` setting is false, it can use these functions:
+-- `matchicons.enable` setting is false, it can use the following functions.
+-- However, these do not automatically add icons to other matches.
 --
 --      local am = clink.argmatcher()
 --      am:addarg(matchicons.filematches)
 --      am:addarg(matchicons.dirmatches)
+--
+-- If an argmatcher wants to force automatically adding icons to matches that
+-- weren't explicitly given icons (backfill missing icons), it can use this
+-- function:
+--
+--      local am = clink.argmatcher()
+--      am:addarg(matchicons.setbackfillicons)
+--
+-- Or to turn on/off automatically adding icons, it can use the function like
+-- this:
+--
+--      local function my_matches_without_icons(word, word_index, ...)
+--          local matches = { "abc", "def", "xyz" }
+--          matchicons.setbackfillicons(false)  -- true or nil -> ON, false -> OFF
+--          return matches
+--      end
+--
+--      local am = clink.argmatcher()
+--      am:addarg(clink.filematches, my_matches_without_icons)
+--
+-- `matchicons.noaddicon`To mark a match display string as already having an icon (i.e. to disable
+-- backfill on a per-match basis), use this function:
+--
+--      local match = {
+--          match = "foo"
+--          description
+--      }
+--      matchicons.noaddicon()
 --
 -- Starting in the October 2025 version, the code has been moved to a Lua module
 -- so that it can be loaded early, before any other scripts try to use the
@@ -56,7 +89,18 @@
 -- earlier script name in the same directory, or a script in a script directory
 -- earlier in the scripts path (run 'clink info' to see the scripts path).
 --
---      require("matchicons_module")
+--      local matchicons = require("matchicons_module")
+--
+-- Or to use matchicons, but only when it's installed, use this:
+--
+--      local has_matchicons, matchicons = pcall(require, "matchicons_module")
+--      if has_matchicons then
+--          -- Can use matchicons.
+--      else
+--          -- Can't use matchicons.  In this case, the 'matchicons' variable
+--          -- contains an error message string indicating why the module
+--          -- couldn't be loaded, instead of a table of functions.
+--      end
 --
 --------------------------------------------------------------------------------
 -- WARNING:  This script makes clink.dirmatches() and clink.filematches()
@@ -80,6 +124,8 @@ settings.add("matchicons.enable", false,
 --luacheck: globals matchicons
 matchicons = {}
 
+local can_backfill              -- Whether to backfill icons for matches without icons.
+local extra_icon_spacing = ""   -- Extra spacing after icons.
 local already_added = {} -- Prevents adding an icon to the same match more than once.
 
 local UNKNOWN_ICON = ""
@@ -1095,15 +1141,23 @@ local function backfill_icons(matches)
             -- text, and make a custom display string.
             if icon then
                 local color = rl.getmatchcolor(m)
-                m.display = "\x1b[m"..color..icon..spacing..text
+                m.display = "\x1b[m"..color..icon..spacing..extra_icon_spacing..text
             end
         end
     end
 end
 
-local function ondisplaymatches(matches)
-    backfill_icons(matches)
+local function reset_state()
+    can_backfill = nil
+    extra_icon_spacing = ""
     already_added = {}
+end
+
+local function ondisplaymatches(matches)
+    if can_backfill then
+    backfill_icons(matches)
+    end
+    reset_state()
     return matches
 end
 
@@ -1131,6 +1185,7 @@ end
 local function init(nobackfill, force)
     if force or settings.get("matchicons.enable") then
         if not nobackfill then
+            can_backfill = true
             clink.ondisplaymatches(ondisplaymatches)
         end
         return true
@@ -1193,7 +1248,7 @@ local function add_icons(matches, nobackfill, force)
                 -- text, and make a custom display string.
                 if icon then
                     local color = rl.getmatchcolor(m)
-                    m.display = "\x1b[m"..color..icon..spacing..text
+                    m.display = "\x1b[m"..color..icon..spacing..extra_icon_spacing..text
                     already_added[m.display] = true
                 end
             end
@@ -1218,8 +1273,15 @@ local original_filematchesexact = clink.filematchesexact
 -- Re-init at each new prompt.
 clink.onbeginedit(function()
     init_metrics()
-    already_added = {}  -- Clear the "already added" cache.
+    reset_state()
 end)
+
+-- Reset the backfill mode at the beginning of each generate operation.
+local resetter = clink.generator(-999999)
+function resetter:generate() -- luacheck: no unused
+    init_metrics()
+    reset_state()
+end
 
 -- Replace the functions with variants that add icons.
 clink.dirmatches = function (word)
@@ -1239,14 +1301,25 @@ if original_filematchesexact then
     end
 end
 
-matchicons.initmetrics = init_metrics
-
-matchicons.dirmatches = function(...)
-    return add_icons(original_dirmatches(...), nil, true)
+matchicons.dirmatches = function(word)
+    return add_icons(original_dirmatches(word), true--[[nobackfill]], true--[[force]])
+end
+matchicons.filematches = function(word)
+    return add_icons(original_filematches(word), true--[[nobackfill]], true--[[force]])
+end
+if original_dirmatchesexact then
+    matchicons.dirmatchesexact = function(word)
+        return add_icons(original_dirmatchesexact(word), true--[[nobackfill]], true--[[force]])
+    end
+end
+if original_filematchesexact then
+    matchicons.filematchesexact = function(word)
+        return add_icons(original_filematchesexact(word), true--[[nobackfill]], true--[[force]])
+    end
 end
 
-matchicons.filematches = function(...)
-    return add_icons(original_filematches(...), nil, true)
+matchicons.setbackfillicons = function(backfill)
+    can_backfill = (backfill or backfill == nil) and true or false
 end
 
 matchicons.geticon = function(match)
@@ -1257,8 +1330,15 @@ matchicons.geticon = function(match)
     end
 end
 
+matchicons.setextraiconspacing = function(extra)
+    if type(extra) == "number" then
+        local n = math.max(0, math.min(2, math.floor(extra)))
+        extra_icon_spacing = string.rep(" ", n)
+    end
+end
+
 matchicons.getspacing = function()
-    return spacing
+    return spacing, extra_icon_spacing
 end
 
 matchicons.getnerdfontsversion = function()
@@ -1266,12 +1346,18 @@ matchicons.getnerdfontsversion = function()
 end
 
 matchicons.addicons = function(matches, force)
-    return add_icons(matches, true, force)
+    return add_icons(matches, true--[[nobackfill]], force)
+end
+
+matchicons.noaddicon = function(display)
+    if type(display) == "string" then
+        already_added[display] = true
+    end
 end
 
 matchicons.addicontomatch = function (m, icon, color, force)
     if type(m) == "table" and
-            (init(true, force)) and
+            (init(true--[[nobackfill]], force)) and
             (not m.display or not already_added[m.display]) then
         -- See documentation for info on how match type strings work.
         -- https://chrisant996.github.io/clink/clink.html#builder:addmatch
@@ -1298,7 +1384,7 @@ matchicons.addicontomatch = function (m, icon, color, force)
                 else
                     color = "\x1b[m"
                 end
-                m.display = color..icon..spacing..text
+                m.display = color..icon..spacing..extra_icon_spacing..text
                 already_added[m.display] = true
             end
         end
