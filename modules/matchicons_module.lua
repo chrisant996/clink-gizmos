@@ -126,7 +126,7 @@ matchicons = {}
 
 local can_backfill              -- Whether to backfill icons for matches without icons.
 local extra_icon_spacing = ""   -- Extra spacing after icons.
-local already_added = {} -- Prevents adding an icon to the same match more than once.
+local already_added = {}        -- Prevents adding an icon to the same match more than once.
 
 local UNKNOWN_ICON = ""
 local ALIAS_ICON = "="
@@ -1155,7 +1155,7 @@ end
 
 local function ondisplaymatches(matches)
     if can_backfill then
-    backfill_icons(matches)
+        backfill_icons(matches)
     end
     reset_state()
     return matches
@@ -1284,19 +1284,19 @@ function resetter:generate() -- luacheck: no unused
 end
 
 -- Replace the functions with variants that add icons.
-clink.dirmatches = function (word)
+clink.dirmatches = function(word)
     return add_icons(original_dirmatches(word))
 end
-clink.filematches = function (word)
+clink.filematches = function(word)
     return add_icons(original_filematches(word))
 end
 if original_dirmatchesexact then
-    clink.dirmatchesexact = function (word)
+    clink.dirmatchesexact = function(word)
         return add_icons(original_dirmatchesexact(word))
     end
 end
 if original_filematchesexact then
-    clink.filematchesexact = function (word)
+    clink.filematchesexact = function(word)
         return add_icons(original_filematchesexact(word))
     end
 end
@@ -1355,7 +1355,7 @@ matchicons.noaddicon = function(display)
     end
 end
 
-matchicons.addicontomatch = function (m, icon, color, force)
+matchicons.addicontomatch = function(m, icon, color, force)
     if type(m) == "table" and
             (init(true--[[nobackfill]], force)) and
             (not m.display or not already_added[m.display]) then
