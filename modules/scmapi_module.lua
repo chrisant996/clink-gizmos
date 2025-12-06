@@ -235,12 +235,12 @@ end
 -- malfunction if such a directory exists within some other source control
 -- manager.
 
-function git.getbranch(git_dir)
+function git.getbranch(git_dir, fast)
     if git._fake then return git._fake.branch end
 
     -- Make sure git works the same as normally.
     if git_dir and git_dir:find("%.git[/\\]*$") then
-        api_git.getbranch(git_dir)
+        api_git.getbranch(git_dir, fast)
     end
 
     -- Pass in git_dir to ensure system_dir_cache is updated.
@@ -251,7 +251,7 @@ function git.getbranch(git_dir)
     api, _, git_dir = get_system(git_dir)
     if not api or not git_dir then return end
 
-    return api.getbranch(git_dir)
+    return api.getbranch(git_dir, fast)
 end
 
 function git.getremote(git_dir)
