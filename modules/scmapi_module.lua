@@ -213,7 +213,7 @@ end
 
 -- git.makecommand:  N/A
 
-function git.isgitdir(dir)
+function git.isgitdir(dir, ...)
     dir = dir or os.getcwd()
 
     if git._fake then
@@ -223,7 +223,7 @@ function git.isgitdir(dir)
 
     local info = detect_dir(dir)
     if info then
-        return info.api.isgitdir(dir)
+        return info.api.isgitdir(dir, ...)
     end
 end
 
@@ -235,12 +235,12 @@ end
 -- malfunction if such a directory exists within some other source control
 -- manager.
 
-function git.getbranch(git_dir, fast)
+function git.getbranch(git_dir, ...)
     if git._fake then return git._fake.branch end
 
     -- Make sure git works the same as normally.
     if git_dir and git_dir:find("%.git[/\\]*$") then
-        return api_git.getbranch(git_dir, fast)
+        return api_git.getbranch(git_dir, ...)
     end
 
     -- Pass in git_dir to ensure system_dir_cache is updated.
@@ -251,22 +251,22 @@ function git.getbranch(git_dir, fast)
     api, _, git_dir = get_system(git_dir)
     if not api or not git_dir then return end
 
-    return api.getbranch(git_dir, fast)
+    return api.getbranch(git_dir, ...)
 end
 
-function git.getremote(git_dir)
+function git.getremote(git_dir, ...)
     if git._fake then return git._fake.remote end
 
     -- Make sure git works the same as normally.
     if git_dir and git_dir:find("%.git[/\\]*$") then
-        return api_git.getremote(git_dir)
+        return api_git.getremote(git_dir, ...)
     end
 
     local api, _
     api, _, git_dir = get_system(git_dir)
     if not api or not git_dir then return end
 
-    return api.getremote(git_dir)
+    return api.getremote(git_dir, ...)
 end
 
 function git.getconflictstatus()
@@ -327,13 +327,13 @@ end
 --          delete = ...            -- total deleted files
 --      }
 --  }
-function git.getstatus(no_untracked, include_submodules)
+function git.getstatus(...)
     if git._fake then return git._fake.status end
 
     local api, name = get_system()
     if not api then return end
 
-    local status = api.getstatus(no_untracked, include_submodules)
+    local status = api.getstatus(...)
     if not status then return end
 
     -- Some fields show up in two places.  If the registered scmapi handle
