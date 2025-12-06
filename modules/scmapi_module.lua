@@ -240,7 +240,7 @@ function git.getbranch(git_dir, fast)
 
     -- Make sure git works the same as normally.
     if git_dir and git_dir:find("%.git[/\\]*$") then
-        api_git.getbranch(git_dir, fast)
+        return api_git.getbranch(git_dir, fast)
     end
 
     -- Pass in git_dir to ensure system_dir_cache is updated.
@@ -259,7 +259,7 @@ function git.getremote(git_dir)
 
     -- Make sure git works the same as normally.
     if git_dir and git_dir:find("%.git[/\\]*$") then
-        api_git.getremote(git_dir)
+        return api_git.getremote(git_dir)
     end
 
     local api, _
