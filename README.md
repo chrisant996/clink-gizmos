@@ -49,15 +49,16 @@ Script Name | Description
 [matchicons.lua](matchicons.lua) | Can show nerd font icons in file and directory completions.  Run `clink set matchicons.enable true` to enable it.  Refer to the usage information in the script file for details.
 [noclink.lua](noclink.lua) | This and the [noclink.cmd](noclink.cmd) script let you temporarily disable/reenable Clink (or Clink's prompt filtering).  Run `noclink -?` for help.
 [scmapi.lua](scmapi.lua) | Allows other scripts to automatically add support for other source control systems into [Clink's Lua `git` APIs](https://chrisant996.github.io/clink/clink.html#git).
-[scmhg.lua](scmhg.lua) | Uses scmapi.lua to add support for `hg` ([Mercurial](https://www.mercurial-scm.org/)).  Disabled by default; refer to the usage info in the script for how to enable it.
-[scmsvn.lua](scmsvn.lua) | Uses scmapi.lua to add support for `svn` ([Subversion](https://subversion.apache.org/)).  Disabled by default; refer to the usage info in the script for how to enable it.
+[scmhg.lua](scmhg.lua) | Uses scmapi.lua to add support for `hg` ([Mercurial](https://www.mercurial-scm.org/)).  Disabled by default; refer to the usage information in the script for how to enable it.
+[scmsvn.lua](scmsvn.lua) | Uses scmapi.lua to add support for `svn` ([Subversion](https://subversion.apache.org/)).  Disabled by default; refer to the usage information in the script for how to enable it.
 [show_tips.lua](show_tips.lua) | Shows a tip about Clink each time Clink is injected.
-[tilde_autoexpand.lua](tilde_autoexpand.lua) | Automatically expands tildes into the user's home directory (disabled by default; see usage information in the script file for how to enable it).
+[tabtitle.lua](tabtitle.lua) | Optionally sets the console title based on a template.  Disabled by default; refer to the usage information in the script file for details.
+[tilde_autoexpand.lua](tilde_autoexpand.lua) | Automatically expands tildes into the user's home directory.  Disabled by default; refer to the usage information in the script file for details.
 [toggle_short.lua](toggle_short.lua) | Adds a command to toggle the word under the cursor between long and short path names.  The default key binding is <kbd>Ctrl</kbd>-<kbd>Alt</kbd>-<kbd>A</kbd>.
 [vscode_shell_integration.lua](vscode_shell_integration.lua) | Automatically enables shell integration for VSCode embedded terminal windows.
 [web_search.lua](web_search.lua) | Shortcuts for searching popular search engines from the command line.  Run `web_search --list` for a list of available shortcuts.  Refer to the usage information in the script file for details.
-[z_dir_popup.lua](z_dir_popup.lua) | If you use [z.lua](https://github.com/skywind3000/z.lua) then this provides a popup listing of directories from z.  See usage information in the script file for details.
-[zoxide_dir_popup.lua](zoxide_dir_popup.lua) | If you use [zoxide](https://github.com/ajeetdsouza/zoxide) then this provides a popup listing of directories from zoxide.  See usage information in the script file for details.
+[z_dir_popup.lua](z_dir_popup.lua) | If you use [z.lua](https://github.com/skywind3000/z.lua) then this provides a popup listing of directories from z.  Refer to the usage information in the script file for details.
+[zoxide_dir_popup.lua](zoxide_dir_popup.lua) | If you use [zoxide](https://github.com/ajeetdsouza/zoxide) then this provides a popup listing of directories from zoxide.  Refer to the usage information in the script file for details.
 
 # Setting up FZF
 
