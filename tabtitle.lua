@@ -3,10 +3,13 @@
 --
 -- This is disabled by default.  Run `clink set tabtitle.enable true` to enable
 -- it.  Once enabled, it updates the terminal title at the beginning and end of
--- inputting a new command line.
+-- inputting a new command line.  Setting the CLINK_TABTITLE_ENABLE environment
+-- variable to 1 or 0 supersedes the tabtitle.enable setting.
 --
 -- The terminal title is updated according to the `tabtitle.template` setting.
 -- The default template for the title sets it to the current working directory.
+-- Setting the CLINK_TABTITLE_TEMPLATE environment supersedes the
+-- tabtitle.template setting.
 -- Certain strings in the template are expanded as follows:
 --      $cwd      = the current working directory
 --      $folder   = the folder name of the current working directory
@@ -32,29 +35,34 @@ if not unicode or not unicode.iter then
 end
 
 settings.add('tabtitle.enable', false, 'Set console title after each command prompt',
-'When enabled, the console title is updated after each command prompt.\
-Note that this may have no effect if the terminal isn\'t configured to allow\
-escape codes to change the console title.  Check the terminal documentation\
-for how to configure that.')
+'When enabled, the console title is updated after each command prompt.\n'..
+'Note that this may have no effect if the terminal isn\'t configured to allow\n'..
+'escape codes to change the console title.  Check the terminal documentation\n'..
+'for how to configure that.\n'..
+'\n'..
+'If %CLINK_TABTITLE_ENABLE% is set, then its value supersedes this setting.')
 
 settings.add('tabtitle.ansi_codes_in_conemu', false, 'Controls ConEmu workaround',
-'By default, ConEmu blocks setting tab titles via escape codes.  If you\
-configure ConEmu to allow them, you can set this to true which will\
-remove the delay before the input command line gets run.')
+'By default, ConEmu blocks setting tab titles via escape codes.  If you\n'..
+'configure ConEmu to allow them, you can set this to true which will\n'..
+'remove the delay before the input command line gets run.')
 
 settings.add('tabtitle.template', '$cwd', 'Template string for setting console title',
-'The default template for the title sets it to the current working directory.\
-Certain strings in the template are expanded as follows:\
-  $cwd = the current working directory\
-  $folder = the folder name of the current working directory\
-  $command = the most recent command\
-  %envvar% = the value of the named environment variable\
-Other text in the template string is used as-is.')
+'The default template for the title sets it to the current working directory.\n'..
+'Certain strings in the template are expanded as follows:\n'..
+'  $cwd = the current working directory\n'..
+'  $folder = the folder name of the current working directory\n'..
+'  $command = the most recent command\n'..
+'  %envvar% = the value of the named environment variable\n'..
+'Other text in the template string is used as-is.\n'..
+'\n'..
+'If %CLINK_TABTITLE_TEMPLATE% is set, then its value supersedes this setting.')
 
 local state_text = 1
 local state_keyword = 2
 local state_envvar = 3
 
+local was_enable
 local last_command = ''
 local ignoring_line
 
@@ -145,13 +153,48 @@ local function expand_template(instr)
     return out
 end
 
-local function update_title()
-    if not settings.get('tabtitle.enable') then
-        return
+local function is_enabled()
+    local enable = os.getenv("CLINK_TABTITLE_ENABLE")
+    if enable then
+        return ((tonumber(enable or "") or 0) > 0)
+    else
+        return settings.get('tabtitle.enable')
     end
+end
 
-    local template = settings.get('tabtitle.template')
+local function get_template()
+    local template = os.getenv("CLINK_TABTITLE_TEMPLATE")
     if template == nil or template == '' then
+        template = settings.get('tabtitle.template')
+    end
+    return template
+end
+
+local function update_title()
+    local reset
+    if not is_enabled() then
+        if not was_enable then
+            return
+        end
+        was_enable = nil
+        reset = true
+        if not console.getoriginaltitle then
+            return
+        end
+    end
+    was_enable = true
+
+    local title
+    if reset then
+        title = console.getoriginaltitle()
+    else
+        local template = get_template()
+        if template == nil or template == '' then
+            return
+        end
+        title = expand_template(template)
+    end
+    if not title then
         return
     end
 
@@ -160,8 +203,6 @@ local function update_title()
     if detected == 'conemu' or host == 'conemu' then
         run_conemu = not settings.get('tabtitle.use_ansi_codes_in_conemu')
     end
-
-    local title = expand_template(template)
 
     if run_conemu then
         -- Attempt to sanitize the input so it isn't susceptible to injection
@@ -192,7 +233,10 @@ end
 
 local function on_end_edit(line)
     if not ignore_line(line) then
-        last_command = line
+        local this_command = line:gsub("%s+$", "")
+        if this_command ~= "" then
+            last_command = this_command
+        end
         update_title()
     end
 end
