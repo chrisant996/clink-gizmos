@@ -1,8 +1,10 @@
--- Shows an optional preview of a doskey alias entered in the input line.
+-- Shows a preview of a doskey alias entered in the input line.
 --
--- By default the preview is disabled.
+-- This is enabled by default, when input hints are enabled.
+-- Run `clink set comment_row.show_hints true` to enable input hints.
 --
--- Run `clink set doskey.show_preview true` to enable the preview.
+-- Run `clink set doskey.show_preview false` to disable the doskey preview.
+-- Run `clink set comment_row.show_hints false` to disable all input hints.
 --
 -- Requires Clink v1.7.0 or higher.
 
