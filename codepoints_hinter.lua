@@ -2,14 +2,16 @@
 -- Codepoints for emojis supersede most other hinters; codepoints for other
 -- non-ASCII characters are superseded by most other hinters.
 --
--- By default this display is disabled.
+-- This is enabled by default, when input hints are enabled.
+-- Run `clink set comment_row.show_hints true` to enable input hints.
+--
+-- Run `clink set codepoints.show_preview false` to disable this preview.
+-- Run `clink set comment_row.show_hints false` to disable all input hints.
 --
 -- In Clink v1.7.5 or nigher, pressing Alt-F1 will immediately display the
 -- codepoints, even for ASCII characters.  Unless Alt-F1 is already bound to
 -- something else, in which can you can bind "luafunc:display_codepoints" to
 -- another key.
---
--- Run `clink set codepoints.show_preview true` to enable the display.
 --
 -- Requires Clink v1.7.4 or higher.
 
