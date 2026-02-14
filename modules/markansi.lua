@@ -15,6 +15,21 @@
 --      "#|hex"                 -->  Background color code for hex RRGGBB (or "@" for default).
 --      "#hex|hex"              -->  Foreground and background color codes (or "@" for default).
 --
+-- Certain special characters can be escaped with a backslash to force them to
+-- be interpreted as literals instead of a formatting characters:
+--
+--      "\@"                    -->  Literal "@".
+--      "\["                    -->  Literal "[".
+--      "\]"                    -->  Literal "]".
+--      "\*"                    -->  Literal "*".
+--      "\_"                    -->  Literal "_".
+--      "\~"                    -->  Literal "~".
+--      "\|"                    -->  Literal "|".
+--      "\^"                    -->  Literal "^".
+--      "\#"                    -->  Literal "#".
+--      "\&"                    -->  Literal "&".
+--      "\!"                    -->  Literal "!".
+--
 -- Exported functions are:
 --
 --  mark:
@@ -56,6 +71,8 @@ local default_codes = {
 }
 
 local double_star_bold = true       -- "**" for bold, and convert "*" to "_".
+
+local backslash_escape_pattern = "[@%[%]*_~|^#&!]"
 
 --------------------------------------------------------------------------------
 local unicode_iter
@@ -252,7 +269,11 @@ local function mark(text, codes)
             peek = next()
         end
 
-        if c == "@" and peek == "@" then
+        if c == "\\" and peek:find(backslash_escape_pattern) then
+            concat(peek)
+            c = ""
+            peek = next()
+        elseif c == "@" and peek == "@" then
             local tmp = ""
             while true do
                 c = next()
@@ -424,7 +445,7 @@ local function mark(text, codes)
                 local tc = (type(t) == "table" and t[2])
                 clear_mode(c, tc)
                 c = ""
-            elseif startable and peek ~= " " then
+            elseif startable and peek and peek ~= " " then
                 local t = codes[cc or c]
                 local tc
                 if type(t) == "string" then
@@ -441,7 +462,8 @@ local function mark(text, codes)
             concat(c)
         end
 
-        startable = not c:find("^[A-Za-z0-9.]$")
+        -- NOTE:  This used to contain ".", but that didn't allow "`a`..`z`".
+        startable = not c:find("^[A-Za-z0-9]$")
         space = (c == " ")
     end
 
