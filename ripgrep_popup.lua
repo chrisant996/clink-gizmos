@@ -77,7 +77,7 @@ function ripgrep_popup(rl_buffer, line_state) -- luacheck: no unused
     -- only add the preview part if it's enabled
     local val = settings.get("ripgrep.show_preview")
     if settings.get("ripgrep.show_preview") then
-        table.insert(args, [[--preview-window "right:40%,border-left" --bind "ctrl-/:change-preview-window(right:70%|hidden|)" --preview "for /f \"tokens=1,2 delims=:\" %a in ({1}) do bat --style numbers --force-colorization --highlight-line %b -r %b::16 %a"]])
+        table.insert(args, [[--preview-window "right:40%,border-left" --bind "ctrl-/:change-preview-window(right:70%|hidden|)" --preview "for /f \"tokens=1,2 delims=:\" %a in ({1}) do @bat --style numbers --force-colorization --highlight-line %b -r %b::16 %a"]])
     end
     table.insert(args, "--height 75% --reverse")
 
