@@ -41,7 +41,8 @@ Script Name | Description
 [doskey_hinter.lua](doskey_hinter.lua) | Can display a hint showing the definition of the doskey alias at the cursor position, if the `comment_row.show_hints` setting is enabled.  Refer to the usage information in the script file for details.
 [doskey_popup.lua](doskey_popup.lua) | Use <kbd>Ctrl</kbd>-<kbd>X</kbd>,<kbd>D</kbd> to show a list of doskey aliases and their expansions.  Refer to the usage information in the script file for details.
 [fuzzy_history.lua](fuzzy_history.lua) | Adds an autosuggest strategy `fuzzy_history` which can ignore path or file extension when providing suggestions from the command history list.  Refer to the usage information in the script file for details.
-[fzf.lua](fzf.lua) | Adds support for using [fzf](https://github.com/junegunn/fzf) with Clink.  Refer to the usage information in the script file for how to activate key bindings.  (This is the script from the [clink-fzf](https://github.com/chrisant996/clink-fzf) repo.)
+[fzf.lua](fzf.lua) | Adds support for using [fzf](https://github.com/junegunn/fzf) with Clink.  Refer to the usage information in the script file for how to activate key bindings.  (This is a copy from the [clink-fzf](https://github.com/chrisant996/clink-fzf) repo.)
+[fzf_git.lua](fzf_git.lua) | Adds support for using [fzf](https://github.com/junegunn/fzf) to browse git objects.  Refer to the usage information in the script file for more information.  (This is a copy from the [clink-fzf](https://github.com/chrisant996/clink-fzf) repo.)
 [highlight_envvars.lua](highlight_envvars.lua) | Can highlight environment variables in the command line, and/or can display a hint showing the value of the environment variable at the cursor.  Use <code>clink set color.envvars <em>your color here</em></code> to set a color (it only highlights them if a color is set).  Use <code>clink set highlight_envvars.show_preview true` to enable the display hint.
 [history_labels.lua](history_labels.lua) | Can automatically switch to a different history file based on the current directory.  Refer to the usage information in the script file for how to configure directories and history files.
 [i.lua](i.lua) | Adds an `i {dir} {command}` command that changes to _{dir}_, runs _{command}_, and changes back to the original directory.  Refer to the usage information in the script file for details and other features.
@@ -63,7 +64,7 @@ Script Name | Description
 
 # Setting up FZF
 
-Clink-gizmos includes clink-fzf, which provides optional integration with the [FZF](https://github.com/junegunn/fzf) fuzzy finder tool for filtering completions, directories, history, etc.
+Clink-gizmos includes [clink-fzf](https://github.com/chrisant996/clink-fzf), which provides optional integration with the [FZF](https://github.com/junegunn/fzf) fuzzy finder tool for filtering completions, directories, history, etc.
 
 To set up FZF integration, refer to the README at [clink-fzf](https://github.com/chrisant996/clink-fzf).
 
