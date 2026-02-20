@@ -75,7 +75,6 @@ function ripgrep_popup(rl_buffer, line_state) -- luacheck: no unused
         [[--bind "change:reload:rg --column --line-number --no-heading --color=always --smart-case {q}"]]
     }
     -- only add the preview part if it's enabled
-    local val = settings.get("ripgrep.show_preview")
     if settings.get("ripgrep.show_preview") then
         table.insert(args, [[--preview-window "right:40%,border-left" --bind "ctrl-/:change-preview-window(right:70%|hidden|)" --preview "for /f \"tokens=1,2 delims=:\" %a in ({1}) do @bat --style numbers --force-colorization --highlight-line %b -r %b::16 %a"]])
     end
@@ -87,6 +86,9 @@ function ripgrep_popup(rl_buffer, line_state) -- luacheck: no unused
     local handle = io.popen(fzf_cmd)
     local result = handle:read("*a")
     handle:close()
+
+    -- Redraw the prompt and input line
+    rl_buffer:refreshline()
     
     -- If the user cancelled fzf, result will be empty
     if result ~= "" then
@@ -104,13 +106,17 @@ function ripgrep_popup(rl_buffer, line_state) -- luacheck: no unused
                 :gsub("{file}", file)
                 :gsub("{line}", line)
 
-            -- if executable/editor has spaces just running final_cmd doesn't seem to work, need to use cmd /s /c on it
-            os.execute('cmd /s /c "' .. final_cmd .. '"')
-            
-            rl_buffer:beginundogroup()
-            rl_buffer:setcursor(1)
-            rl_buffer:remove(1, rl_buffer:getlength() + 1)  -- remove what the user might have started with
-            rl_buffer:endundogroup()
+            -- If the command line to execute begins with a quote and contains
+            -- more than one pair of quotes, then special quote handling is
+            -- necessary.
+            if final_cmd:find('^%s*"') then
+                os.execute('cmd /s /c "'..final_cmd..'"')
+            else
+                os.execute(final_cmd)
+            end
+
+            -- Discard what the user might have started with
+            rl.invokecommand("clink-reset-line")
         end
     end
 end
