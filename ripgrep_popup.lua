@@ -128,11 +128,11 @@ settings.add("ripgrep.show_preview", true, "Shows a preview window in fzf with f
     "If enabled it will also show a preview of the file using bat.\n"..
     "Expects bat command to be available in PATH.")
 
-settings.add("ripgrep.editor_executable", "%windir%\\notepad.exe", "Configures the editor to use to view the file when enter is pressed.",
+settings.add("ripgrep.editor_executable", "%windir%\\notepad.exe", "Configures the editor to use to view the file.",
     "Will only be taken into account if EDITOR environment variable is not set,\n"..
     "otherwise EDITOR env variable will be used.")
 
-settings.add("ripgrep.command", '"{editor}" "{file}"', "Configures the command to run when enter is pressed.",
+settings.add("ripgrep.command", '"{editor}" "{file}"', "Configures how to invoke the editor.",
     "Will use the editor path (ripgrep.editor_executable) as the executable, and can be used\n"..
     "to invoke the editor so it opens the file at the selected line, if the editor supports it.\n"..
 "You can use the following variables: {editor}, {line}, {file}.\n"..
