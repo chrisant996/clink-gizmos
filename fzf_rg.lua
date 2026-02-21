@@ -46,6 +46,12 @@ if not clink.argmatcher then
     return
 end
 
+if os.getenv("WHICH_RIPGREP_SCRIPT") ~= "chrisant996" then
+    return
+else
+    print("\x1b[3mUsing fzf_rg.lua script.\x1b[m")
+end
+
 local cached_preview_command
 
 local function add_desc(macro, desc)

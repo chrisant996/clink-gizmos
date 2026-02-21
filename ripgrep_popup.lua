@@ -44,6 +44,11 @@
 ]]
 --------------------------------------------------------------------------------
 
+if os.getenv("WHICH_RIPGREP_SCRIPT") ~= "eblis" then
+    return
+else
+    print("\x1b[3mUsing ripgrep_popup.lua script.\x1b[m")
+end
 
 local function add_desc(macro, desc)
     if rl.describemacro then
