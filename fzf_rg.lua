@@ -217,7 +217,11 @@ local function tq_command(mode)
     if not script then
         return "rem"
     end
-    return string.format("2>nul %q lua %q --tq%s {q}", CLINK_EXE, script, mode)
+    -- Any quotes need to be escaped the same way {q} does, since the resulting
+    -- string gets embedded inside a quoted string.
+    local exe = string.format("%q", CLINK_EXE):gsub('"', '\\"')
+    local lua = string.format("%q", script):gsub('"', '\\"')
+    return string.format("2>nul %s lua %s --tq%s {q}", exe, lua, mode)
 end
 
 add_desc("luafunc:fzf_ripgrep", "Show a FZF filtered view with files matching search term")
