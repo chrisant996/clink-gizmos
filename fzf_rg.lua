@@ -236,7 +236,7 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
     -- If the line is empty, let ripgrep prompt for input inside fzf.
     -- Otherwise, use the current line as the initial ripgrep query.
     local _rg_command = [[rg --column --line-number --no-heading --color=]]..get_color_mode()..[[ --smart-case {q}]]
-    local reload_command = [[if not {q} == \"\" ]].._rg_command -- Don't search if empty query string.
+    local reload_command = [[echo {q} | findstr /r /c:"..*" >nul && ]].._rg_command -- Don't search if empty query string.
     local preview_command = get_preview_command()
     local args = {
         "--height 75%",
@@ -310,6 +310,9 @@ end
 if rl.getbinding then
     if not rl.getbinding([["\C-Xf"]]) then
         rl.setbinding([["\C-Xf"]], [["luafunc:fzf_ripgrep"]])
+    end
+    if not rl.getbinding([["\C-X\C-f"]]) then
+        rl.setbinding([["\C-X\C-f"]], [["luafunc:fzf_ripgrep"]])
     end
 end
 
