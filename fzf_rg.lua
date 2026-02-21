@@ -93,8 +93,7 @@ local function get_preview_command()
                              "--color="..def_color.." "..
                              "--decorations="..def_color.." "..
                              "--pager=never "..
-                             "--highlight-line {2} "..
-                             "-r {2}::16"
+                             "--highlight-line {2}"
 
         -- Sometimes bat is installed as batcat
         local bat = search_in_paths("batcat.exe")
@@ -237,7 +236,7 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
     -- If the line is empty, let ripgrep prompt for input inside fzf.
     -- Otherwise, use the current line as the initial ripgrep query.
     local _rg_command = [[rg --column --line-number --no-heading --color=]]..get_color_mode()..[[ --smart-case {q}]]
-    local reload_command = [[if not {q} == \"\" ]].._rg_command -- Don't search if empty query string.
+    local reload_command = [[echo {q} | findstr /r /c:"..*" >nul && ]].._rg_command -- Don't search if empty query string.
     local preview_command = get_preview_command()
     local header = "CTRL-/ (toggle preview)  CTRL-R (ripgrep mode)  CTRL-F (fzf mode)"
     local expect
@@ -266,7 +265,7 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
         -- Preview.
         [[--bind "ctrl-/:change-preview-window(right:40%|70%|hidden)"]],
         [[--bind "shift-down:preview-down+preview-down,shift-up:preview-up+preview-up,preview-scroll-up:preview-up+preview-up,preview-scroll-down:preview-down+preview-down"]],
-        [[--preview-window "right:hidden,border-left" ]],
+        [[--preview-window "right:hidden,border-left,+{2}+4/2,~4" ]],
         [[--preview "]]..preview_command..[["]],
     }
 
@@ -362,6 +361,9 @@ end
 if rl.getbinding then
     if not rl.getbinding([["\C-Xf"]]) then
         rl.setbinding([["\C-Xf"]], [["luafunc:fzf_ripgrep"]])
+    end
+    if not rl.getbinding([["\C-X\C-f"]]) then
+        rl.setbinding([["\C-X\C-f"]], [["luafunc:fzf_ripgrep"]])
     end
 end
 
