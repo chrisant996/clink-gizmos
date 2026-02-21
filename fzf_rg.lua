@@ -34,7 +34,7 @@ local function maybe_quote(word)
     return word
 end
 
-local function edit_file(file, line)
+local function edit_file(rl_buffer, file, line)
     -- Prepare the command to open the editor
     -- Uses EDITOR environment variable, defaults to 'vim'
     local editor = os.getenv("EDITOR") or path.join(os.getenv("windir"), "System32\\notepad.exe")
@@ -108,6 +108,10 @@ local function edit_file(file, line)
         append_cmd('"%s"', file)
     end
 
+    -- Avoid garbling the prompt and input line display in case the editor is a
+    -- terminal-based program.
+    rl_buffer:beginoutput()
+
     -- If the command line to execute begins with a quote and contains
     -- more than one pair of quotes, then special quote handling is
     -- necessary.
@@ -164,7 +168,7 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
     end
 
     -- Open the file in an editor
-    edit_file(file, line)
+    edit_file(rl_buffer, file, line)
 
     -- Discard what the user might have started with
     rl.invokecommand("clink-reset-line")
