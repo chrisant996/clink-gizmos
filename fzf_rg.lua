@@ -17,6 +17,8 @@
 ]]
 --------------------------------------------------------------------------------
 
+local cached_preview_command
+
 local function add_desc(macro, desc)
     if rl.describemacro then
         rl.describemacro(macro, desc)
@@ -36,6 +38,41 @@ end
 
 local function get_color_mode()
     return os.getenv("NO_COLOR") and "never" or "always"
+end
+
+local function search_in_paths(name)
+    local paths = (os.getenv("path") or ""):explode(";")
+    for _, dir in ipairs(paths) do
+        local file = path.join(dir, name)
+        if os.isfile(file) then
+            return file, dir
+        end
+    end
+end
+
+local function get_preview_command()
+    if not cached_preview_command then
+        local def_style = os.getenv("BAT_STYLE") or "full"
+        local def_color = get_color_mode()
+        local def_bat_opts = "--style=\""..def_style.."\" "..
+                             "--color="..def_color.." "..
+                             "--decorations="..def_color.." "..
+                             "--pager=never "..
+                             "--highlight-line {2} "..
+                             "-r {2}::16"
+
+        -- Sometimes bat is installed as batcat
+        local bat = search_in_paths("batcat.exe")
+        if not bat then
+            bat = search_in_paths("bat.exe")
+        end
+        if bat then
+            cached_preview_command = bat:gsub("\\", "\\\\").." "..def_bat_opts.." {1}"
+        else
+            cached_preview_command = "type {1}"
+        end
+    end
+    return cached_preview_command
 end
 
 local function edit_file(rl_buffer, file, line)
@@ -144,17 +181,28 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
     -- Otherwise, use the current line as the initial ripgrep query.
     local _rg_command = [[rg --column --line-number --no-heading --color=]]..get_color_mode()..[[ --smart-case {q}]]
     local reload_command = [[if not {q} == \"\" ]].._rg_command -- Don't search if empty query string.
+    local preview_command = get_preview_command()
     local args = {
         "--height 75%",
         "--reverse",
         -- Preserve and display ANSI color codes.
         "--ansi",
+        -- Delimiter for fields in lines.
+        [[--delimiter :]],
+        -- Borders.
+        [[--header "CTRL-/ (toggle preview)"]],
+        [[--header-border line]],
         -- %q adds safe quotes.
         string.format("--query %q", query),
         [[--disabled]],                         -- Disable fzf filtering (ripgrep will filter).
         -- Query.
         [[--bind "start:reload(]]..reload_command..[[)"]],
         [[--bind "change:reload(]]..reload_command..[[)"]],
+        -- Preview.
+        [[--bind "ctrl-/:change-preview-window(right:40%|70%|hidden)"]],
+        [[--bind "shift-down:preview-down+preview-down,shift-up:preview-up+preview-up,preview-scroll-up:preview-up+preview-up,preview-scroll-down:preview-down+preview-down"]],
+        [[--preview-window "right:hidden,border-left" ]],
+        [[--preview "]]..preview_command..[["]],
     }
     local fzf_opts = table.concat(args, " ")
 
@@ -198,3 +246,9 @@ if rl.getbinding then
         rl.setbinding([["\C-Xf"]], [["luafunc:fzf_ripgrep"]])
     end
 end
+
+clink.onbeginedit(function()
+    -- Clear the cached preview command when starting a new input line, to
+    -- search the system PATH again and construct an updated preview command.
+    cached_preview_command = nil
+end)
