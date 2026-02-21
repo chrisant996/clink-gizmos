@@ -34,6 +34,10 @@ local function maybe_quote(word)
     return word
 end
 
+local function get_color_mode()
+    return os.getenv("NO_COLOR") and "never" or "always"
+end
+
 local function edit_file(rl_buffer, file, line)
     -- Prepare the command to open the editor.
     -- Uses EDITOR environment variable, defaults to notepad.
@@ -138,6 +142,8 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
 
     -- If the line is empty, let ripgrep prompt for input inside fzf.
     -- Otherwise, use the current line as the initial ripgrep query.
+    local _rg_command = [[rg --column --line-number --no-heading --color=]]..get_color_mode()..[[ --smart-case {q}]]
+    local reload_command = [[if not {q} == \"\" ]].._rg_command -- Don't search if empty query string.
     local args = {
         "--height 75%",
         "--reverse",
@@ -147,8 +153,8 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
         string.format("--query %q", query),
         [[--disabled]],                         -- Disable fzf filtering (ripgrep will filter).
         -- Query.
-        [[--bind "start:reload:rg --column --line-number --no-heading --color=always --smart-case {q}"]],
-        [[--bind "change:reload:rg --column --line-number --no-heading --color=always --smart-case {q}"]],
+        [[--bind "start:reload(]]..reload_command..[[)"]],
+        [[--bind "change:reload(]]..reload_command..[[)"]],
     }
     local fzf_opts = table.concat(args, " ")
 
