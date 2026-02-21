@@ -93,8 +93,7 @@ local function get_preview_command()
                              "--color="..def_color.." "..
                              "--decorations="..def_color.." "..
                              "--pager=never "..
-                             "--highlight-line {2} "..
-                             "-r {2}::16"
+                             "--highlight-line {2}"
 
         -- Sometimes bat is installed as batcat
         local bat = search_in_paths("batcat.exe")
@@ -264,7 +263,7 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
         -- Preview.
         [[--bind "ctrl-/:change-preview-window(right:40%|70%|hidden)"]],
         [[--bind "shift-down:preview-down+preview-down,shift-up:preview-up+preview-up,preview-scroll-up:preview-up+preview-up,preview-scroll-down:preview-down+preview-down"]],
-        [[--preview-window "right:hidden,border-left" ]],
+        [[--preview-window "right:hidden,border-left,+{2}+4/2,~4" ]],
         [[--preview "]]..preview_command..[["]],
     }
     local fzf_opts = table.concat(args, " ")
