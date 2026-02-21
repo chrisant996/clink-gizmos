@@ -34,51 +34,7 @@ local function maybe_quote(word)
     return word
 end
 
-add_desc("luafunc:fzf_ripgrep", "Show a FZF filtered view with files matching search term")
-
--- luacheck: globals fzf_ripgrep
--- Define the search and pick function
-function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
-    -- Get the current text in the command line as the search query
-    local query = rl_buffer:getbuffer()
-
-    -- --disabled: Tells fzf not to filter results itself
-    -- --bind "change:reload...": Runs rg every time the input changes
-    -- {q}: Is the placeholder for the fzf input string
-
-    -- If the line is empty, we'll let ripgrep prompt for input inside fzf
-    -- Otherwise, we use the current line as the initial ripgrep query
-    local args = {
-        "fzf",
-        "--ansi",
-        "--disabled",
-        string.format("--query %q", query), -- %q adds safe quotes
-        -- We use single quotes inside the bind to protect the rg command
-        [[--bind "start:reload:rg --column --line-number --no-heading --color=always --smart-case {q}"]],
-        [[--bind "change:reload:rg --column --line-number --no-heading --color=always --smart-case {q}"]],
-        "--height 75% --reverse"
-    }
-    local fzf_cmd = table.concat(args, " ")
-
-    -- Open a pipe to capture the fzf output
-    local handle = io.popen(fzf_cmd)
-    local result = handle:read("*a")
-    handle:close()
-
-    -- Redraw the prompt and input line
-    rl_buffer:refreshline()
-
-    -- If the user cancelled fzf, result will be empty
-    if not result or result == "" then
-        return
-    end
-
-    -- fzf output format: file:line:column:text
-    local file, line = result:match("([^:]+):([^:]+):")
-    if not file or not line then
-        return
-    end
-
+local function edit_file(file, line)
     -- Prepare the command to open the editor
     -- Uses EDITOR environment variable, defaults to 'vim'
     local editor = os.getenv("EDITOR") or path.join(os.getenv("windir"), "System32\\notepad.exe")
@@ -160,6 +116,55 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
     else
         os.execute(final_cmd)
     end
+end
+
+add_desc("luafunc:fzf_ripgrep", "Show a FZF filtered view with files matching search term")
+
+-- luacheck: globals fzf_ripgrep
+-- Define the search and pick function
+function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
+    -- Get the current text in the command line as the search query
+    local query = rl_buffer:getbuffer()
+
+    -- --disabled: Tells fzf not to filter results itself
+    -- --bind "change:reload...": Runs rg every time the input changes
+    -- {q}: Is the placeholder for the fzf input string
+
+    -- If the line is empty, we'll let ripgrep prompt for input inside fzf
+    -- Otherwise, we use the current line as the initial ripgrep query
+    local args = {
+        "fzf",
+        "--ansi",
+        "--disabled",
+        string.format("--query %q", query), -- %q adds safe quotes
+        -- We use single quotes inside the bind to protect the rg command
+        [[--bind "start:reload:rg --column --line-number --no-heading --color=always --smart-case {q}"]],
+        [[--bind "change:reload:rg --column --line-number --no-heading --color=always --smart-case {q}"]],
+        "--height 75% --reverse"
+    }
+    local fzf_cmd = table.concat(args, " ")
+
+    -- Open a pipe to capture the fzf output
+    local handle = io.popen(fzf_cmd)
+    local result = handle:read("*a")
+    handle:close()
+
+    -- Redraw the prompt and input line
+    rl_buffer:refreshline()
+
+    -- If the user cancelled fzf, result will be empty
+    if not result or result == "" then
+        return
+    end
+
+    -- fzf output format: file:line:column:text
+    local file, line = result:match("([^:]+):([^:]+):")
+    if not file or not line then
+        return
+    end
+
+    -- Open the file in an editor
+    edit_file(file, line)
 
     -- Discard what the user might have started with
     rl.invokecommand("clink-reset-line")
