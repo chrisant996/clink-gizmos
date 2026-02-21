@@ -1,8 +1,9 @@
 --------------------------------------------------------------------------------
 -- FZF integration for Clink.
 --
--- Clink is available at https://chrisant996.github.io/clink
--- FZF is available from https://github.com/junegunn/fzf
+-- This requires Clink and FZF.
+--  - Clink is available at https://chrisant996.github.io/clink
+--  - FZF is available from https://github.com/junegunn/fzf
 --
 -- Either put fzf.exe in a directory listed in the system PATH environment
 -- variable, or run 'clink set fzf.exe_location <put_full_exe_name_here>' to
@@ -680,12 +681,14 @@ end
 local function apply_default_bindings()
     if settings.get('fzf.default_bindings') then
         tab_binding = rl.getbinding([["\t"]])
-        rl.setbinding([["\C-t"]], [["luafunc:fzf_file"]])
-        rl.setbinding([["\C-r"]], [["luafunc:fzf_history"]])
-        rl.setbinding([["\M-c"]], [["luafunc:fzf_directory"]])
-        rl.setbinding([["\M-b"]], [["luafunc:fzf_bindings"]])
-        rl.setbinding([["\t"]], [["luafunc:fzf_tab"]])
-        rl.setbinding([["\e[27;5;32~"]], [["luafunc:fzf_complete_force"]])
+        for _, keymap in ipairs({"emacs", "vi-command", "vi-insert"}) do
+            rl.setbinding([["\C-t"]], [["luafunc:fzf_file"]], keymap)
+            rl.setbinding([["\C-r"]], [["luafunc:fzf_history"]], keymap)
+            rl.setbinding([["\M-c"]], [["luafunc:fzf_directory"]], keymap)
+            rl.setbinding([["\M-b"]], [["luafunc:fzf_bindings"]], keymap)
+            rl.setbinding([["\t"]], [["luafunc:fzf_tab"]], keymap)
+            rl.setbinding([["\e[27;5;32~"]], [["luafunc:fzf_complete_force"]], keymap)
+        end
     end
 end
 
