@@ -35,10 +35,9 @@ local function maybe_quote(word)
 end
 
 local function edit_file(rl_buffer, file, line)
-    -- Prepare the command to open the editor
-    -- Uses EDITOR environment variable, defaults to 'vim'
+    -- Prepare the command to open the editor.
+    -- Uses EDITOR environment variable, defaults to notepad.
     local editor = os.getenv("EDITOR") or path.join(os.getenv("windir"), "System32\\notepad.exe")
-
     local haystack = editor:lower()
     local quotable
     if os.isfile(haystack) then
@@ -63,7 +62,7 @@ local function edit_file(rl_buffer, file, line)
         final_cmd = final_cmd..' '..string.format(fmt, ...)
     end
 
-    -- 1. Modern IDEs & Cross-platform (VS Code, Zed, Sublime)
+    -- 1. Modern IDEs & Cross-platform (VS Code, Zed, Sublime).
     if test("code") or
             test("zed") then
         append_cmd('--goto "%s:%s"', file, line)
@@ -74,31 +73,31 @@ local function edit_file(rl_buffer, file, line)
             test("micro") then
         append_cmd('"%s:%s"', file, line)
 
-    -- 2. Notepad++
+    -- 2. Notepad++.
     elseif test("notepad++") or
             test("npp") then
         append_cmd('-n%s "%s"', line, file)
 
-    -- 3. UltraEdit (uedit64 / uedit32)
+    -- 3. UltraEdit (uedit64 / uedit32).
     elseif test("uedit") then
-        -- UltraEdit uses file.txt/line syntax
+        -- UltraEdit uses file.txt/line syntax.
         append_cmd('"%s/%s"', file, line)
 
-    -- 4. EditPlus
+    -- 4. EditPlus.
     elseif test("editplus") then
         append_cmd('-cursor %s:1 "%s"', line, file)
 
-    -- 5. PSPad
+    -- 5. PSPad.
     elseif test("pspad") then
         append_cmd('/%s "%s"', line, file)
 
-    -- 6. JetBrains (IntelliJ, WebStorm, etc.)
+    -- 6. JetBrains (IntelliJ, WebStorm, etc).
     elseif test("idea") or
             test("storm") or
             test("rider") then
         append_cmd('--line %s "%s"', line, file)
 
-    -- 7. CLI Editors (Vim, Nano, Edit)
+    -- 7. CLI Editors (Vim, Nano, Edit).
     elseif test("vim") or
             test("nano") or
             test("edit") then
@@ -122,20 +121,23 @@ local function edit_file(rl_buffer, file, line)
     end
 end
 
+local function extract_file_and_line(item)
+    -- fzf output format: file:line:column:text
+    return item:match("([^:]+):([^:]+):")
+end
+
 add_desc("luafunc:fzf_ripgrep", "Show a FZF filtered view with files matching search term")
 
 -- luacheck: globals fzf_ripgrep
--- Define the search and pick function
+-- Define the search and pick function.
 function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
-    -- Get the current text in the command line as the search query
+    -- Get the current text in the command line as the search query.
     local query = rl_buffer:getbuffer()
 
-    -- --disabled: Tells fzf not to filter results itself
-    -- --bind "change:reload...": Runs rg every time the input changes
-    -- {q}: Is the placeholder for the fzf input string
+    -- {q} is the placeholder for the fzf input string.
 
-    -- If the line is empty, we'll let ripgrep prompt for input inside fzf
-    -- Otherwise, we use the current line as the initial ripgrep query
+    -- If the line is empty, let ripgrep prompt for input inside fzf.
+    -- Otherwise, use the current line as the initial ripgrep query.
     local args = {
         "fzf",
         "--ansi",
@@ -153,25 +155,26 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
     local result = handle:read("*a")
     handle:close()
 
-    -- Redraw the prompt and input line
+    -- Redraw the prompt and input line.
     rl_buffer:refreshline()
 
-    -- If the user cancelled fzf, result will be empty
+    -- If the user cancelled fzf, result will be empty.
     if not result or result == "" then
         return
     end
 
-    -- fzf output format: file:line:column:text
-    local file, line = result:match("([^:]+):([^:]+):")
+    -- Get the file and line from the selected item.
+    local file, line = extract_file_and_line(result)
     if not file or not line then
+        rl_buffer:ding()
         return
     end
 
-    -- Open the file in an editor
-    edit_file(rl_buffer, file, line)
-
-    -- Discard what the user might have started with
+    -- Discard what the user might have started with.
     rl.invokecommand("clink-reset-line")
+
+    -- Open the file in an editor.
+    edit_file(rl_buffer, file, line)
 end
 
 if rl.getbinding then
