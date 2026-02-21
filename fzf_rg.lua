@@ -16,6 +16,35 @@
 
 ]]
 --------------------------------------------------------------------------------
+-- luacheck: no max line length
+
+if not clink.argmatcher then
+    -- This script invokes itself as a standalone Lua script for some things.
+    if arg[1] == "--tqf" or arg[1] == "--tqr" then
+        -- Transform query between ripgrep mode and fzf mode.
+        local temp = os.getenv("TEMP")
+        if temp then
+            local opposite = { ["f"]="r", ["r"]="f" }
+            local rletter = arg[1]:sub(-1)
+            local wletter = opposite[rletter]
+            -- Write the old mode's query argument to the old mode's file.
+            local wfile = path.join(temp, "fzf_rg_"..wletter..".tmp")
+            local w = io.open(wfile, "w")
+            if w then
+                w:write(arg[2])
+                w:close()
+            end
+            -- Read and print the new mode's query string from its file..
+            local rfile = path.join(temp, "fzf_rg_"..rletter..".tmp")
+            local r = io.open(rfile, "r")
+            if r then
+                print(r:read())
+                r:close()
+            end
+        end
+    end
+    return
+end
 
 local cached_preview_command
 
@@ -167,6 +196,24 @@ local function extract_file_and_line(item)
     return item:match("([^:]+):([^:]+):")
 end
 
+local function tq_command(mode)
+    local script
+    do
+        local info = debug.getinfo(1, "S")
+        if info.source and info.source:sub(1, 1) == "@" then
+            script = info.source:sub(2)
+        elseif info.source then
+            log.info(string.format("Unexpected source path '%s'.", info.source))
+        else
+            log.info(string.format("Unable to get source path for script."))
+        end
+    end
+    if not script then
+        return "rem"
+    end
+    return string.format("2>nul %q lua %q --tq%s {q}", CLINK_EXE, script, mode)
+end
+
 add_desc("luafunc:fzf_ripgrep", "Show a FZF filtered view with files matching search term")
 
 -- luacheck: globals fzf_ripgrep
@@ -190,13 +237,19 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
         -- Delimiter for fields in lines.
         [[--delimiter :]],
         -- Borders.
-        [[--header "CTRL-/ (toggle preview)"]],
+        [[--header "CTRL-/ (toggle preview)  CTRL-R (ripgrep mode)  CTRL-F (fzf mode)"]],
         [[--header-border line]],
         -- %q adds safe quotes.
         string.format("--query %q", query),
+        -- Initial mode (ripgrep).
         [[--disabled]],                         -- Disable fzf filtering (ripgrep will filter).
+        [[--prompt "🔎 ripgrep> "]],
+        -- Mode changes (ripgrep/fzf).
+        [[--bind "ctrl-f:unbind(change,ctrl-f)+change-prompt(🔎 fzf> )+enable-search+rebind(ctrl-r)+transform-query(]]..tq_command("f")..[[)"]],
+        [[--bind "ctrl-r:unbind(ctrl-r)+change-prompt(🔎 ripgrep> )+disable-search+rebind(change,ctrl-f)+transform-query(]]..tq_command("r")..[[)+reload(]]..reload_command..[[)"]],
+        [[--color "hl:-1:underline:reverse,hl+:-1:underline:reverse"]],
         -- Query.
-        [[--bind "start:reload(]]..reload_command..[[)"]],
+        [[--bind "start:reload(]]..reload_command..[[)+unbind(ctrl-r)"]],
         [[--bind "change:reload(]]..reload_command..[[)"]],
         -- Preview.
         [[--bind "ctrl-/:change-preview-window(right:40%|70%|hidden)"]],
@@ -205,6 +258,10 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
         [[--preview "]]..preview_command..[["]],
     }
     local fzf_opts = table.concat(args, " ")
+
+    -- Delete any fzf mode query temporary file, so switching to fzf mode starts
+    -- out with an empty query string.
+    os.remove(path.join(os.getenv("TEMP"), "fzf_rg_f.tmp"))
 
     -- Open a pipe to capture the fzf output.
     local old_opts = os.getenv("FZF_DEFAULT_OPTS")
