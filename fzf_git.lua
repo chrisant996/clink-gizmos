@@ -661,6 +661,9 @@ function fzf_git_help(rl_buffer, line_state) -- luacheck: no unused
             desc = t.desc
             if t.keys then
                 for _, k in ipairs(t.keys) do
+                    if command:find("commit_hashes") then
+                        k = k:gsub("Bkspc", "C-h")
+                    end
                     if affinity and k:find(affinity, 1, true) then
                         best = k
                         break

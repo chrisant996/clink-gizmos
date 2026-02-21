@@ -97,6 +97,10 @@ local function find_command_end(line, s)
 end
 
 local function substitution(line)
+    if ((tonumber(os.getenv("CLINK_GIZMOS_COMMAND_SUBSTITUTION") or "1")) or 0) <= 0 then
+        return
+    end
+
     local i = 1
     local result = ''
     local continue
@@ -149,6 +153,10 @@ clink.onfilterinput(substitution)
 local cl = clink.classifier(1)
 
 function cl:classify(commands) -- luacheck: no unused
+    if ((tonumber(os.getenv("CLINK_GIZMOS_COMMAND_SUBSTITUTION") or "1")) or 0) <= 0 then
+        return
+    end
+
     if not commands[1] then
         return
     end
