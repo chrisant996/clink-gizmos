@@ -12,7 +12,8 @@
 --[[
 
 # Default key bindings for fzf_ripgrep.
-"\C-Xf":    "luafunc:fzf_ripgrep"   # CTRL-X,f Show a FZF filtered view with files matching search term
+"\C-xf":    "luafunc:fzf_ripgrep"   # CTRL-X,f Show a FZF filtered view with files matching search term
+"\C-x\C-f": "luafunc:fzf_ripgrep"   # CTRL-X,CTRL-F Show a FZF filtered view with files matching search term
 
 ]]
 --------------------------------------------------------------------------------
@@ -568,11 +569,11 @@ end
 local function apply_default_bindings()
     if rl.getbinding then
         for _, keymap in ipairs({"emacs", "vi-command", "vi-insert"}) do
-            if not rl.getbinding([["\C-Xf"]], keymap) then
-                rl.setbinding([["\C-Xf"]], [["luafunc:fzf_ripgrep"]], keymap)
+            if not rl.getbinding([["\C-xf"]], keymap) then
+                rl.setbinding([["\C-xf"]], [["luafunc:fzf_ripgrep"]], keymap)
             end
-            if not rl.getbinding([["\C-X\C-f"]], keymap) then
-                rl.setbinding([["\C-X\C-f"]], [["luafunc:fzf_ripgrep"]], keymap)
+            if not rl.getbinding([["\C-x\C-f"]], keymap) then
+                rl.setbinding([["\C-x\C-f"]], [["luafunc:fzf_ripgrep"]], keymap)
             end
         end
     end
