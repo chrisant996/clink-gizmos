@@ -239,6 +239,8 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
     local _rg_command = [[rg --column --line-number --no-heading --color=]]..get_color_mode()..[[ --smart-case {q}]]
     local reload_command = [[if not {q} == \"\" ]].._rg_command -- Don't search if empty query string.
     local preview_command = get_preview_command()
+    local header = "CTRL-/ (toggle preview)  CTRL-R (ripgrep mode)  CTRL-F (fzf mode)"
+    local expect
     local args = {
         "--height 75%",
         "--reverse",
@@ -247,7 +249,7 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
         -- Delimiter for fields in lines.
         [[--delimiter :]],
         -- Borders.
-        [[--header "CTRL-/ (toggle preview)  CTRL-R (ripgrep mode)  CTRL-F (fzf mode)"]],
+        [[--header "]]..header..[["]],
         [[--header-border line]],
         -- %q adds safe quotes.
         string.format("--query %q", query),
@@ -267,35 +269,56 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
         [[--preview-window "right:hidden,border-left" ]],
         [[--preview "]]..preview_command..[["]],
     }
-    local fzf_opts = table.concat(args, " ")
+
+    -- When expect is a comma separated list of key names, any of those keys
+    -- is returned from fzf for post-processing.  When the --expect flag is
+    -- present, the first line of output is always either one of the expected
+    -- key names or a blank line (if some other key exited fzf).
+    if expect then
+        table.insert(args, '--expect='..expect)
+        for _, key in ipairs(string.explode(expect, ',')) do
+            table.insert(args, '--bind "'..key..':accept"')
+        end
+    end
 
     -- Delete any fzf mode query temporary file, so switching to fzf mode starts
     -- out with an empty query string.
     os.remove(path.join(os.getenv("TEMP"), "fzf_rg_f.tmp"))
 
     -- Open a pipe to capture the fzf output.
-    local old_opts = os.getenv("FZF_DEFAULT_OPTS")
-    os.setenv("FZF_DEFAULT_OPTS", old_opts.." "..fzf_opts)
-    local handle = io.popen("fzf")
-    os.setenv("FZF_DEFAULT_OPTS", old_opts)
-    if not handle then
-        rl_buffer:ding()
-        return
-    end
+    local key
+    local results = {}
+    do
+        local old_opts = os.getenv("FZF_DEFAULT_OPTS")
+        local fzf_opts = table.concat(args, " ")
+        os.setenv("FZF_DEFAULT_OPTS", old_opts.." "..fzf_opts)
+        local handle = io.popen("fzf")
+        os.setenv("FZF_DEFAULT_OPTS", old_opts)
+        if not handle then
+            rl_buffer:ding()
+            return
+        end
 
-    local result = handle:read("*a")
-    handle:close()
+        for line in handle:lines() do
+            if expect and not key then
+                key = line
+            elseif line ~= "" then
+                table.insert(results, line)
+            end
+        end
+        handle:close()
+    end
 
     -- Redraw the prompt and input line.
     rl_buffer:refreshline()
 
     -- If the user cancelled fzf, result will be empty.
-    if not result or result == "" then
+    if not results or not results[1] then
         return
     end
 
     -- Get the file and line from the selected item.
-    local file, line = extract_file_and_line(result)
+    local file, line = extract_file_and_line(results[1])
     if not file or not line then
         rl_buffer:ding()
         return
