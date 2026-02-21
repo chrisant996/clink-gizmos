@@ -109,6 +109,39 @@ local function get_preview_command()
     return cached_preview_command
 end
 
+local function get_reload_command()
+    -- This is the ripgrep command to run.
+    local rg_command = [[rg --column --line-number --no-heading --color=]]..get_color_mode()..[[ --smart-case {q}]]
+
+    -- This takes care to only run ripgrep if the query string is not empty.
+    -- This matters because otherwise ripgrep immediately starts loading all
+    -- file content under the current directory (which can be over 100GB in
+    -- in some repos).  And all that's visible is always only the first few
+    -- lines of the first file; not very useful.
+
+    -- How this technique works is nuanced; here is a detailed breakdown:
+    return
+        -- Echo an escaped form of the query string.  When empty, it is ^"^"
+        -- which is printed as "", which is 2 characters long.  Note carefully
+        -- that there is no space between this and the subsequent | operator.
+        -- The presence of a space would change the regex pattern to match.
+        [[echo {q}]]..
+        -- Pipe into findstr and look for at least 3 characters, and redirect to
+        -- nul so the matched string is not printed.
+        [[| findstr ... >nul]]..
+        -- If the pattern matched (not empty) then run ripgrep.
+        [[&& ]]..rg_command..
+        -- If the pattern did not match then clear errorlevel, otherwise fzf
+        -- thinks the command failed and reports an error.
+        [[|| ver >nul]]
+
+    -- echo ^"^"| findstr ... >nul&& echo match|| echo mismatch
+    -- mismatch
+    --
+    -- echo ^" ^"| findstr ... >nul&& echo match|| echo mismatch
+    -- match
+end
+
 local function edit_file(rl_buffer, file, line)
     -- Prepare the command to open the editor.
     -- Uses EDITOR environment variable, defaults to notepad.
@@ -235,9 +268,7 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
 
     -- If the line is empty, let ripgrep prompt for input inside fzf.
     -- Otherwise, use the current line as the initial ripgrep query.
-    local _rg_command = [[rg --column --line-number --no-heading --color=]]..get_color_mode()..[[ --smart-case {q}]]
-    local reload_command = [[if not {q} == \"\" ]].._rg_command -- Don't search if empty query string.
-    --local reload_command = [[echo {q} | findstr /r /c:"..*" >nul && ]].._rg_command -- Don't search if empty query string.
+    local reload_command = get_reload_command()
     local preview_command = get_preview_command()
     local header = "CTRL-/ (toggle preview)  CTRL-R (ripgrep mode)  CTRL-F (fzf mode)"
     local expect
