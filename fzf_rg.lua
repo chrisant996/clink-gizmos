@@ -324,11 +324,39 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
         return
     end
 
-    -- Discard what the user might have started with.
-    rl.invokecommand("clink-reset-line")
-
-    -- Open the file in an editor.
-    edit_file(rl_buffer, file, line)
+    -- Do what the user requested.
+    local action = "edit"
+    if action == "edit" then
+        -- Discard what the user might have started with.
+        rl.invokecommand("clink-reset-line")
+        -- Open the file in an editor.
+        edit_file(rl_buffer, file, line)
+    elseif action:find("^insert%-") then
+        rl_buffer:beginundogroup()
+        if action == "insert-cursor" then -- luacheck: ignore 542
+        elseif action == "insert-word" then
+            -- Eat non-spaces walking backwards from cursor.
+            local cursor = rl_buffer:getcursor()
+            local i = cursor
+            local text = rl_buffer:getbuffer()
+            while i > 1 do
+                if string.byte(text, i - 1) == 32 then
+                    break
+                end
+                i = i - 1
+            end
+            rl_buffer:remove(i, cursor)
+        elseif action == "insert-line" then
+            -- Replace the whole line.
+            rl_buffer:remove(1, -1)
+        end
+        rl_buffer:insert(maybe_quote(file))
+        rl_buffer:insert(" ")
+        rl_buffer:endundogroup()
+    else
+        rl_buffer:ding()
+        return
+    end
 end
 
 if rl.getbinding then
