@@ -69,6 +69,50 @@ if fzf_rg_loader_arbiter.initialized then
     return
 end
 
+--------------------------------------------------------------------------------
+-- Settings available via 'clink set'.
+--
+-- IMPORTANT:  These must be added upon load; attempting to defer this until
+-- onbeginedit causes 'clink set' to not know about them.  This is the one part
+-- of the script that can't fully support the goal of "newest version wins".
+
+local function maybe_add(name, ...)
+    if settings.get(name) == nil then
+        settings.add(name, ...)
+    end
+end
+
+maybe_add("fzf_rg.editor", "", "Configures how to invoke the editor",
+[[This is a command line to execute for opening a file into an editor.  If this
+is not set the %FZF_RG_EDITOR% is used instead (and supports the same token
+replacements).  If neither are found, then %EDITOR% or notepad are used and the
+filename is appended (if the editor program is recognized then the line number
+may be automatically added with an appropriate command line syntax as well).
+
+The following token replacements can be used in fzf_rg.editor and FZF_RG_EDITOR:
+    - {file} is replaced with the selected filename.  The filename is
+      automatically quoted when needed, but if a quote is adjacent to {file}
+      then quoting is disabled (e.g. an editor might require "{file}@{line}").
+      If {file} is omitted, then the filename is automatically appended to the
+      end of the command.
+    - {line} is replaced with the selected line number.
+    - {$envvar} is replaced with the value of %envvar% (with any newlines
+      replaced with spaces).
+
+Usually an editor supports one of the following formats:
+    - vscode:                       {editor} --goto {file}:{line}
+    - sublime, emacs, hx, micro:    {editor} {file}:{line}
+    - notepad++:                    {editor} -n {line} {file}
+    - ultraedit:                    {editor} file/line
+    - EditPlus:                     {editor} -cursor {line}:1 {file}
+    - pspad:                        {editor} /{line} {file}
+    - JetBrains (idea, storm, ..):  {editor} --line {line} {file}
+    - vim, nano:                    {editor} +{line} {file}
+    - notepad:                      {editor} {file}
+
+If setting from the command line you may need to escape the " character as \".]]
+)
+
 local describemacro_list = {}
 local cached_preview_command
 
@@ -169,15 +213,21 @@ local function get_reload_command()
     -- match
 end
 
-local function edit_file(rl_buffer, file, line)
-    -- Prepare the command to open the editor.
-    -- Uses EDITOR environment variable, defaults to notepad.
-    local editor = os.getenv("EDITOR") or path.join(os.getenv("windir"), "System32\\notepad.exe")
-    local haystack = editor:lower()
-    local quotable
+local function isnilorempty(s)
+    return (s == nil or s == "")
+end
+
+local function infer_placeholders(command, line)
+    local haystack = command:lower()
+    local quotable, added_placeholders
     if os.isfile(haystack) then
         quotable = true
         haystack = path.getname(haystack)
+    else
+        local words = string.explode(haystack)
+        if words and words[1] and os.isfile(words[1]) then
+            haystack = path.getname(words[1])
+        end
     end
     local function test(...)
         for _, pattern in ipairs({...}) do
@@ -191,55 +241,153 @@ local function edit_file(rl_buffer, file, line)
             end
         end
     end
+    local function append_placeholder(text, delimiter)
+        added_placeholders = true
+        command = command..(delimiter or " ")..text
+    end
 
-    local final_cmd = quotable and maybe_quote(editor) or editor
-    local function append_cmd(fmt, ...)
-        final_cmd = final_cmd..' '..string.format(fmt, ...)
+    if quotable then
+        command = maybe_quote(command)
     end
 
     -- 1. Modern IDEs & Cross-platform (VS Code, Zed, Sublime).
     if test("code") or
             test("zed") then
-        append_cmd('--goto "%s:%s"', file, line)
-
+        append_placeholder("--goto {file}")
+        if not isnilorempty(line) then
+            append_placeholder(":{line}", "")
+        end
     elseif test("subl") or
             test("emacs") or
             test("hx") or
             test("micro") then
-        append_cmd('"%s:%s"', file, line)
+        append_placeholder("{file}")
+        if not isnilorempty(line) then
+            append_placeholder(":{line}", "")
+        end
 
     -- 2. Notepad++.
     elseif test("notepad++") or
             test("npp") then
-        append_cmd('-n%s "%s"', line, file)
+        if not isnilorempty(line) then
+            append_placeholder("-n{line}")
+        end
+        append_placeholder("{file}")
 
     -- 3. UltraEdit (uedit64 / uedit32).
     elseif test("uedit") then
-        -- UltraEdit uses file.txt/line syntax.
-        append_cmd('"%s/%s"', file, line)
+        append_placeholder("{file}")
+        if not isnilorempty(line) then
+            append_placeholder("/{line}", "")
+        end
 
     -- 4. EditPlus.
     elseif test("editplus") then
-        append_cmd('-cursor %s:1 "%s"', line, file)
+        if not isnilorempty(line) then
+            append_placeholder("-cursor {line}:1")
+        end
+        append_placeholder("{file}")
 
     -- 5. PSPad.
     elseif test("pspad") then
-        append_cmd('/%s "%s"', line, file)
+        if not isnilorempty(line) then
+            append_placeholder("/{line}")
+        end
+        append_placeholder("{file}")
 
     -- 6. JetBrains (IntelliJ, WebStorm, etc).
     elseif test("idea") or
             test("storm") or
             test("rider") then
-        append_cmd('--line %s "%s"', line, file)
+        if not isnilorempty(line) then
+            append_placeholder("--line {line}")
+        end
+        append_placeholder("{file}")
 
     -- 7. CLI Editors (Vim, Nano, Edit).
     elseif test("vim") or
             test("nano") or
             test("edit") then
-        append_cmd('+"%s" "%s"', line, file)
-
+        if not isnilorempty(line) then
+            append_placeholder(" +{line}")
+        end
+        append_placeholder("{file}")
     else
-        append_cmd('"%s"', file)
+        append_placeholder("{file}")
+    end
+
+    return command, added_placeholders
+end
+
+local function apply_placeholders(command, file, line)
+    local applied = ""
+    local has_file
+
+    local i = 1
+    while true do
+        local s, e = command:find("{$?[^ %p]+}", i)
+        if not s then
+            -- No more placeholders; append the rest of the command.
+            applied = applied..command:sub(i)
+            break
+        end
+
+        -- Append up to the placeholder.
+        applied = applied..command:sub(i, s - 1)
+
+        -- Expand the placeholder.
+        local placeholder = command:sub(s, e):lower()
+        if placeholder:find("^.%$") then
+            applied = applied..os.getenv(command:sub(s + 2, e - 1))
+        elseif placeholder == "{line}" then
+            applied = applied..(line or "1")
+        elseif placeholder == "{file}" then
+            -- If a quote is adjacent to the {file} placeholder then do not
+            -- add quotes, otherwise automatically add quotes if needed.
+            if command:sub(s - 1) == '"' or command:sub(e + 1) == '"' then
+                applied = applied..file
+            else
+                applied = applied..maybe_quote(file)
+            end
+            has_file = true
+        else
+            applied = applied..placeholder
+        end
+
+        -- Advance past the placeholder.
+        i = e + 1
+    end
+
+    -- If there's no {file} placeholder then append the filename.
+    if not has_file then
+        applied = applied.." "..maybe_quote(file)
+    end
+
+    return applied
+end
+
+local function edit_file(rl_buffer, file, line)
+    local command = settings.get("fzf_rg.editor") or ""
+    if command == "" then
+        command = os.getenv("FZF_RG_EDITOR") or ""
+    end
+
+    local found_placeholders = (command:find("{.*}") and true or nil)
+    if command == "" then
+        command = os.getenv("EDITOR") or ""
+        if command == "" then
+            command = path.join(os.getenv("windir"), "System32\\notepad.exe")
+        end
+    end
+
+    if not found_placeholders then
+        command, found_placeholders = infer_placeholders(command, line)
+    end
+
+    if found_placeholders then
+        command = apply_placeholders(command, file, line)
+    else
+        command = command.." "..maybe_quote(file)
     end
 
     -- Avoid garbling the prompt and input line display in case the editor is a
@@ -249,10 +397,10 @@ local function edit_file(rl_buffer, file, line)
     -- If the command line to execute begins with a quote and contains
     -- more than one pair of quotes, then special quote handling is
     -- necessary.
-    if final_cmd:find('^%s*"') then
-        os.execute('cmd /s /c "'..final_cmd..'"')
+    if command:find('^%s*"') then
+        os.execute('cmd /s /c "'..command..'"')
     else
-        os.execute(final_cmd)
+        os.execute(command)
     end
 end
 
@@ -298,7 +446,7 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
     local reload_command = get_reload_command()
     local preview_command = get_preview_command()
     local header = "CTRL-/ (toggle preview)  CTRL-R (ripgrep mode)  CTRL-F (fzf mode)"
-    local expect
+    local expect = nil
     local args = {
         "--height 75%",
         "--reverse",
