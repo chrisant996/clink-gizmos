@@ -4,6 +4,7 @@ setlocal
 if "%~1" == "branches" goto :branches
 if "%~1" == "eachref" goto :eachref
 if "%~1" == "edit_file" goto :edit_file
+if "%~1" == "edit_git_show" goto :edit_git_show
 if "%~1" == "edit_tree_file" goto :edit_tree_file
 if "%~1" == "extract_file_name" goto :extract_file_name
 if "%~1" == "files" goto :files
@@ -35,6 +36,13 @@ goto :eof
 set ARG=%~2
 set ARG=%ARG:"=%
 call :__extract_file_name "%~0" "%ARG%"
+goto :common_edit_file
+
+:edit_git_show
+set ARG_COMMIT=%~2
+set ARG_COMMIT=%ARG_COMMIT:"=%
+set ARG=%TEMP%\fzf_rg_git_show.tmp
+git show %ARG_COMMIT% > "%ARG%"
 goto :common_edit_file
 
 :edit_tree_file

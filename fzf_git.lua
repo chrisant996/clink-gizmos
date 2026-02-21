@@ -615,10 +615,11 @@ end
 -- fzf which eats the next character of input (e.g. the leading ESC from ESC[A
 -- i.e. the Up arrow key).  Using execute has others problems anyway, at least
 -- on Windows -- for example, nano and other terminal based editors can't run
--- because stdin is still redirected.  So, the helper script uses the start
--- command as part of the workaround.
+-- because stdin is still redirected (fzf#4260).  So, the helper script uses the
+-- start command as part of the workaround.
 local bind_alt_e_edit_file = [[--bind "alt-e:execute-silent:$helper edit_file {}" ]]
 local bind_alt_e_edit_tree_file = [[--bind "alt-e:execute-silent:$helper edit_tree_file {}" ]]
+local bind_alt_e_edit_git_show = [[--bind "alt-e:execute-silent:$helper edit_git_show {2}" ]]
 
 -- luacheck: globals fzf_git_commit_hashes
 fzf_git_commit_hashes = nil
@@ -1091,9 +1092,9 @@ function fzf_git_eachref(rl_buffer, line_state) -- luacheck: no unused
         --no-hscroll \
         --bind 'start:reload:bash "$__fzf_git" --list refs' \
         --bind 'ctrl-/:change-preview-window(down,70%|hidden|)' \
-        --bind "ctrl-o:execute-silent:bash \"$__fzf_git\" --list {1} {2}" \
-        --bind "alt-e:execute:${EDITOR:-vim} <(git show {2}) < /dev/tty > /dev/tty" \
-        --bind "alt-a:change-border-label(🍀 Every ref)+reload:bash \"$__fzf_git\" --list all-refs" ]]..
+        --bind "ctrl-o:execute-silent:bash \"$__fzf_git\" --list {1} {2}" ]]..
+        bind_alt_e_edit_git_show..
+        [[--bind "alt-a:change-border-label(🍀 Every ref)+reload:bash \"$__fzf_git\" --list all-refs" ]]..
             -- IMPORTANT:  fzf-git uses
             --      --preview "git log --oneline --graph --date=short --color=$(__fzf_git_color .) --pretty='format:%C(auto)%cd %h%d %s' {2} --"
             -- which has been encapsulated into the helper script to solve the
