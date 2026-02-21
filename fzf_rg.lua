@@ -139,19 +139,29 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
     -- If the line is empty, let ripgrep prompt for input inside fzf.
     -- Otherwise, use the current line as the initial ripgrep query.
     local args = {
-        "fzf",
+        "--height 75%",
+        "--reverse",
+        -- Preserve and display ANSI color codes.
         "--ansi",
-        "--disabled",
-        string.format("--query %q", query), -- %q adds safe quotes
-        -- We use single quotes inside the bind to protect the rg command
+        -- %q adds safe quotes.
+        string.format("--query %q", query),
+        [[--disabled]],                         -- Disable fzf filtering (ripgrep will filter).
+        -- Query.
         [[--bind "start:reload:rg --column --line-number --no-heading --color=always --smart-case {q}"]],
         [[--bind "change:reload:rg --column --line-number --no-heading --color=always --smart-case {q}"]],
-        "--height 75% --reverse"
     }
-    local fzf_cmd = table.concat(args, " ")
+    local fzf_opts = table.concat(args, " ")
 
-    -- Open a pipe to capture the fzf output
-    local handle = io.popen(fzf_cmd)
+    -- Open a pipe to capture the fzf output.
+    local old_opts = os.getenv("FZF_DEFAULT_OPTS")
+    os.setenv("FZF_DEFAULT_OPTS", old_opts.." "..fzf_opts)
+    local handle = io.popen("fzf")
+    os.setenv("FZF_DEFAULT_OPTS", old_opts)
+    if not handle then
+        rl_buffer:ding()
+        return
+    end
+
     local result = handle:read("*a")
     handle:close()
 
