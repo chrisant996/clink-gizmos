@@ -52,11 +52,38 @@ else
     print("\x1b[3mUsing fzf_rg.lua script.\x1b[m")
 end
 
+-- luacheck: globals fzf_rg_loader_arbiter
+fzf_rg_loader_arbiter = fzf_rg_loader_arbiter or {}
+if fzf_rg_loader_arbiter.initialized then
+    local msg = 'fzf_rg.lua was already fully initialized'
+    if fzf_rg_loader_arbiter.loaded_source then
+        msg = msg..' ('..fzf_rg_loader_arbiter.loaded_source..')'
+    end
+    msg = msg..', but another copy got loaded later'
+    local info = debug.getinfo(1, "S")
+    local source = info and info.source or nil
+    if source then
+        msg = msg..' ('..source..')'
+    end
+    log.info(msg..'.')
+    return
+end
+
+local describemacro_list = {}
 local cached_preview_command
 
-local function add_desc(macro, desc)
-    if rl.describemacro then
-        rl.describemacro(macro, desc)
+local function describe_commands()
+    if describemacro_list then
+        for _, d in ipairs(describemacro_list) do
+            rl.describemacro(d.macro, d.desc)
+        end
+        describemacro_list = nil
+    end
+end
+
+local function add_help_desc(macro, desc)
+    if rl.describemacro and describemacro_list then
+        table.insert(describemacro_list, { macro=macro, desc=desc })
     end
 end
 
@@ -256,7 +283,7 @@ local function tq_command(mode)
     return string.format("2>nul %s lua %s --tq%s {q}", exe, lua, mode)
 end
 
-add_desc("luafunc:fzf_ripgrep", "Show a FZF filtered view with files matching search term")
+add_help_desc("luafunc:fzf_ripgrep", "Show a FZF filtered view with files matching search term")
 
 -- luacheck: globals fzf_ripgrep
 -- Define the search and pick function.
@@ -390,16 +417,45 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
     end
 end
 
-if rl.getbinding then
-    if not rl.getbinding([["\C-Xf"]]) then
-        rl.setbinding([["\C-Xf"]], [["luafunc:fzf_ripgrep"]])
-    end
-    if not rl.getbinding([["\C-X\C-f"]]) then
-        rl.setbinding([["\C-X\C-f"]], [["luafunc:fzf_ripgrep"]])
+local function apply_default_bindings()
+    if rl.getbinding then
+        for _, keymap in ipairs({"emacs", "vi-command", "vi-insert"}) do
+            if not rl.getbinding([["\C-Xf"]], keymap) then
+                rl.setbinding([["\C-Xf"]], [["luafunc:fzf_ripgrep"]], keymap)
+            end
+            if not rl.getbinding([["\C-X\C-f"]], keymap) then
+                rl.setbinding([["\C-X\C-f"]], [["luafunc:fzf_ripgrep"]], keymap)
+            end
+        end
     end
 end
 
+--------------------------------------------------------------------------------
+-- Delayed initialization shim.  Check for multiple copies of the script being
+-- loaded in the same session.  This became necessary because Cmder wanted to
+-- include fzf.lua, but users may have already installed a separate copy of the
+-- script.
+
+fzf_rg_loader_arbiter.ensure_initialized = function()
+    assert(not fzf_rg_loader_arbiter.initialized)
+
+    describe_commands()
+    apply_default_bindings()
+
+    local info = debug.getinfo(1, "S")
+    local source = info and info.source or nil
+
+    fzf_rg_loader_arbiter.initialized = true
+    fzf_rg_loader_arbiter.loaded_source = source
+end
+
 clink.onbeginedit(function()
+    -- Do delayed initialization if it hasn't happened yet.
+    if fzf_rg_loader_arbiter.ensure_initialized then
+        fzf_rg_loader_arbiter.ensure_initialized()
+        fzf_rg_loader_arbiter.ensure_initialized = nil
+    end
+
     -- Clear the cached preview command when starting a new input line, to
     -- search the system PATH again and construct an updated preview command.
     cached_preview_command = nil
