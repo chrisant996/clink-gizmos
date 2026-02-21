@@ -11,8 +11,8 @@
 --
 --[[
 
-# Default key bindings for ripgrep_popup.
-"\C-Xf":    "luafunc:ripgrep_popup"  # CTRL-X,f Show a FZF filtered view with files matching search term
+# Default key bindings for fzf_ripgrep.
+"\C-Xf":    "luafunc:fzf_ripgrep"   # CTRL-X,f Show a FZF filtered view with files matching search term
 
 ]]
 --------------------------------------------------------------------------------
@@ -34,11 +34,11 @@ local function maybe_quote(word)
     return word
 end
 
-add_desc("luafunc:ripgrep_popup", "Show a FZF filtered view with files matching search term")
+add_desc("luafunc:fzf_ripgrep", "Show a FZF filtered view with files matching search term")
 
--- luacheck: globals ripgrep_popup
+-- luacheck: globals fzf_ripgrep
 -- Define the search and pick function
-function ripgrep_popup(rl_buffer, line_state) -- luacheck: no unused
+function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
     -- Get the current text in the command line as the search query
     local query = rl_buffer:getbuffer()
 
@@ -167,6 +167,6 @@ end
 
 if rl.getbinding then
     if not rl.getbinding([["\C-Xf"]]) then
-        rl.setbinding([["\C-Xf"]], [["luafunc:ripgrep_popup"]])
+        rl.setbinding([["\C-Xf"]], [["luafunc:fzf_ripgrep"]])
     end
 end
