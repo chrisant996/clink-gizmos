@@ -610,7 +610,7 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
     do
         local old_opts = os.getenv("FZF_DEFAULT_OPTS")
         local fzf_opts = table.concat(args, " ")
-        os.setenv("FZF_DEFAULT_OPTS", old_opts.." "..fzf_opts)
+        os.setenv("FZF_DEFAULT_OPTS", (old_opts or "").." "..fzf_opts)
         local handle = io.popen("fzf")
         os.setenv("FZF_DEFAULT_OPTS", old_opts)
         if not handle then
