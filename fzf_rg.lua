@@ -162,6 +162,7 @@ If setting from the command line you may need to escape the " character as \".]]
 
 local describemacro_list = {}
 local cached_preview_command
+local cached_preview_has_bat
 
 local function describe_commands()
     if describemacro_list then
@@ -224,8 +225,9 @@ local function get_preview_command()
         else
             cached_preview_command = "type {1}"
         end
+        cached_preview_has_bat = bat
     end
-    return cached_preview_command, bat
+    return cached_preview_command, cached_preview_has_bat
 end
 
 local function get_reload_command()
