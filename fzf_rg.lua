@@ -2,18 +2,15 @@
 -- Provides a command for showing a list of files matching a search pattern and
 -- opening the files your editor.
 --
--- KEY BINDING:
+-- KEY BINDINGS:
 --
 --  Each default key binding here is only applied if the key isn't already bound
 --  to something else.
 --
+--      CTRL-X,F        = Start fzf and search files using ripgrep.
+--      CTRL-X,CTRL-F   = Start fzf and search files using ripgrep.
+--
 --  You may also set key bindings manually in your .inputrc file.
---
---
--- TODO:  Document fzf_rg.editor.
--- TODO:  Document how the editor configuration works.
--- TODO:  Document the environment variables.
---
 --[[
 
 # Default key bindings for fzf_ripgrep.
@@ -21,6 +18,34 @@
 "\C-x\C-f": "luafunc:fzf_ripgrep"   # CTRL-X,CTRL-F Show a FZF filtered view with files matching search term
 
 ]]
+-- KEYS IN FZF:
+--
+--  These keys perform special functions.  See fzf documentation for info
+--  about general keys available in fzf.
+--
+--      ESC             = Exit.
+--      ENTER           = Open the selected file in an editor.
+--      ALT-I           = Insert the selected file into the input line.
+--
+--      CTRL-/          = Toggles the preview pane on the right.
+--      CTRL-\          = Toggles the preview pane on the bottom.
+--
+--      CTRL-R          = Use ripgrep mode; list matches in files.
+--      CTRL-G          = Use fzf mode; filter matches further.
+--
+--      CTRL-U          = Clear the query text.
+--
+--
+-- EDITOR:
+--
+--  TODO:  Document fzf_rg.editor.
+--  TODO:  Document how the editor configuration works (and placeholder tokens).
+--
+--
+-- ENVIRONMENT VARIABLES:
+--
+--  FZF_RG_EDITOR       = Command to launch editor (expands placeholder tokens).
+
 --------------------------------------------------------------------------------
 -- luacheck: no max line length
 
