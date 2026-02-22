@@ -479,7 +479,8 @@ local function get_preview_config()
     local preview_command, bat = get_preview_command()
     local header_lines = bat and "4" or "0"
     local args = {
-        [[--bind "ctrl-/:change-preview-window(right:40%|70%|hidden)"]],
+        [[--bind "ctrl-/:change-preview-window(right:40%,border-left|right:70%,border-left|hidden)"]],
+        [[--bind "ctrl-\\:change-preview-window(bottom:40%,border-top|bottom:70%,border-top|hidden)"]],
         [[--bind "shift-down:preview-down+preview-down,shift-up:preview-up+preview-up,preview-scroll-up:preview-up+preview-up,preview-scroll-down:preview-down+preview-down"]],
         [[--preview-window "right:hidden,border-left,+{2}+]]..header_lines..[[/2,~]]..header_lines..[[" ]],
         [[--preview "]]..preview_command..[["]],
