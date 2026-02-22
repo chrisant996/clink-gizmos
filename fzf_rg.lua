@@ -172,6 +172,7 @@ If setting from the command line you may need to escape the " character as \".]]
 local describemacro_list = {}
 local cached_preview_command
 local cached_preview_has_bat
+local has_rg
 
 local function describe_commands()
     if describemacro_list then
@@ -203,19 +204,36 @@ local function get_color_mode()
     return os.getenv("NO_COLOR") and "never" or "always"
 end
 
-local function search_in_paths(name)
+local function search_in_paths(...)
     local paths = (os.getenv("path") or ""):explode(";")
+    local names = {...}
     for _, dir in ipairs(paths) do
-        local file = path.join(dir, name)
-        if os.isfile(file) then
-            return file, dir
+        for _, name in ipairs(names) do
+            local file = path.join(dir, name)
+            if os.isfile(file) then
+                return file, dir
+            end
         end
     end
 end
 
 local function get_reload_command()
+    -- Check for rg in the system PATH.  Do this every time until found, in
+    -- case the user installs rg in response to the message.
+    local rg = has_rg or search_in_paths("rg.exe", "rg.cmd", "rg.bat")
+    if not rg then
+        return table.concat({
+            "echo Unable to find rg in the system PATH.",
+            "echo.",
+            "echo Get rg from here:  https://github.com/BurntSushi/ripgrep",
+            "echo and make sure it is in the system PATH.",
+        }, "&")
+    end
+    has_rg = true
+
     -- This is the ripgrep command to run.
     local rg_command = table.concat({
+        "2>&1", -- So that errors can be seen, esp. from bad FZF_RG_RG_OPTIONS.
         "rg",
         "--column",
         "--line-number",
