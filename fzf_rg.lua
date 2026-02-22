@@ -218,18 +218,84 @@ local function isnilorempty(s)
     return (s == nil or s == "")
 end
 
-local function infer_placeholders(command, line)
-    local haystack = command:lower()
-    local quotable, added_placeholders
-    if os.isfile(haystack) then
-        quotable = true
-        haystack = path.getname(haystack)
-    else
-        local words = string.explode(haystack)
-        if words and words[1] and os.isfile(words[1]) then
-            haystack = path.getname(words[1])
+local function apply_placeholders(command, file, line)
+    local applied = ""
+    local has_file
+
+    local i = 1
+    while true do
+        local s, e = command:find("{$?[^ %p]+}", i)
+        if not s then
+            -- No more placeholders; append the rest of the command.
+            applied = applied..command:sub(i)
+            break
         end
+
+        -- Append up to the placeholder.
+        applied = applied..command:sub(i, s - 1)
+
+        -- Expand the placeholder.
+        local placeholder = command:sub(s, e):lower()
+        if placeholder:find("^.%$") then
+            applied = applied..os.getenv(command:sub(s + 2, e - 1))
+        elseif placeholder == "{line}" then
+            applied = applied..(line or "1")
+        elseif placeholder == "{file}" then
+            -- If a quote is adjacent to the {file} placeholder then do not
+            -- add quotes, otherwise automatically add quotes if needed.
+            if command:sub(s - 1) == '"' or command:sub(e + 1) == '"' then
+                applied = applied..file
+            else
+                applied = applied..maybe_quote(file)
+            end
+            has_file = true
+        else
+            applied = applied..placeholder
+        end
+
+        -- Advance past the placeholder.
+        i = e + 1
     end
+
+    -- If there's no {file} placeholder then append the filename.
+    if not has_file then
+        applied = applied.." "..maybe_quote(file)
+    end
+
+    return applied
+end
+
+-- Returns command filename string, and a Boolean indicating whether the input
+-- command string is quotable (i.e. is an exact filename).
+local function extract_command_filename(command, found_placeholders)
+    if found_placeholders then
+        command = apply_placeholders(command, "||||||||", "||||||||")
+    end
+
+    if os.isfile(command) then
+        return command, true
+    end
+
+    command = command:gsub("^%s+", "")
+
+    local filename = command:match('^"([^"]+)"')
+    if filename then
+        return filename
+    end
+
+    local words = string.explode(command)
+    if words and words[1] then
+        return words[1]
+    end
+end
+
+local function infer_placeholders(command, found_placeholders, line)
+    local haystack = command:lower()
+    local command_filename, quotable = extract_command_filename(command, found_placeholders)
+    if command_filename then
+        haystack = path.getname(command_filename)
+    end
+
     local function test(...)
         for _, pattern in ipairs({...}) do
             for _, suffix in ipairs({'', '%.exe', '%.cmd', '%.bat', '%.pl', '%.py'}) do
@@ -242,6 +308,8 @@ local function infer_placeholders(command, line)
             end
         end
     end
+
+    local added_placeholders
     local function append_placeholder(text, delimiter)
         added_placeholders = true
         command = command..(delimiter or " ")..text
@@ -320,54 +388,7 @@ local function infer_placeholders(command, line)
     return command, added_placeholders
 end
 
-local function apply_placeholders(command, file, line)
-    local applied = ""
-    local has_file
-
-    local i = 1
-    while true do
-        local s, e = command:find("{$?[^ %p]+}", i)
-        if not s then
-            -- No more placeholders; append the rest of the command.
-            applied = applied..command:sub(i)
-            break
-        end
-
-        -- Append up to the placeholder.
-        applied = applied..command:sub(i, s - 1)
-
-        -- Expand the placeholder.
-        local placeholder = command:sub(s, e):lower()
-        if placeholder:find("^.%$") then
-            applied = applied..os.getenv(command:sub(s + 2, e - 1))
-        elseif placeholder == "{line}" then
-            applied = applied..(line or "1")
-        elseif placeholder == "{file}" then
-            -- If a quote is adjacent to the {file} placeholder then do not
-            -- add quotes, otherwise automatically add quotes if needed.
-            if command:sub(s - 1) == '"' or command:sub(e + 1) == '"' then
-                applied = applied..file
-            else
-                applied = applied..maybe_quote(file)
-            end
-            has_file = true
-        else
-            applied = applied..placeholder
-        end
-
-        -- Advance past the placeholder.
-        i = e + 1
-    end
-
-    -- If there's no {file} placeholder then append the filename.
-    if not has_file then
-        applied = applied.." "..maybe_quote(file)
-    end
-
-    return applied
-end
-
-local function edit_file(rl_buffer, file, line)
+local function get_editor()
     local command = settings.get("fzf_rg.editor") or ""
     if command == "" then
         command = os.getenv("FZF_RG_EDITOR") or ""
@@ -381,8 +402,24 @@ local function edit_file(rl_buffer, file, line)
         end
     end
 
+    return command, found_placeholders
+end
+
+local function get_editor_nickname()
+    local command, found_placeholders = get_editor()
+    local command_filename = extract_command_filename(command, found_placeholders)
+    command_filename = command_filename and path.getbasename(command_filename) or command
+    if console.ellipsify then
+        command_filename = console.ellipsify(command_filename, 16)
+    end
+    return command_filename
+end
+
+local function edit_file(rl_buffer, file, line)
+    local command, found_placeholders = get_editor()
+
     if not found_placeholders then
-        command, found_placeholders = infer_placeholders(command, line)
+        command, found_placeholders = infer_placeholders(command, found_placeholders, line)
     end
 
     if found_placeholders then
@@ -446,7 +483,7 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
     -- Otherwise, use the current line as the initial ripgrep query.
     local reload_command = get_reload_command()
     local preview_command = get_preview_command()
-    local header = "CTRL-/ (toggle preview)  CTRL-R (ripgrep mode)  CTRL-F (fzf mode)"
+    local header = "ENTER (edit via "..get_editor_nickname()..")  CTRL-/ (toggle preview)\nCTRL-R (ripgrep mode)  CTRL-F (fzf mode)"
     local expect = nil
     local args = {
         "--height 75%",
