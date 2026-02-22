@@ -1,16 +1,30 @@
 --------------------------------------------------------------------------------
--- Provides a command for showing a list of files matching a search pattern and
--- opening the files your editor.
+-- FZF and RipGrep integration for Clink.
 --
--- KEY BINDINGS:
 --
---  Each default key binding here is only applied if the key isn't already bound
---  to something else.
+-- This provides a command for showing a list of files matching a search pattern
+-- and opening the files your editor.
 --
 --      CTRL-X,F        = Start fzf and search files using ripgrep.
 --      CTRL-X,CTRL-F   = Start fzf and search files using ripgrep.
 --
---  You may also set key bindings manually in your .inputrc file.
+--
+-- REQUIREMENTS:
+--
+-- This requires Clink, FZF, and ripgrep:
+--
+--  - Clink is available at https://chrisant996.github.io/clink
+--  - FZF is available from https://github.com/junegunn/fzf
+--    (version 0.67.0 or newer work; older versions may or may not work)
+--  - RipGrep is available from https://github.com/BurntSushi/ripgrep
+--    (version 15.1.0 or newer work; older versions may or may not work)
+--
+--
+-- DEFAULT KEY BINDINGS:
+--
+-- Each default key binding here is only applied if the key isn't already bound
+-- to something else.  You may also set key bindings manually in your .inputrc
+-- file.
 --[[
 
 # Default key bindings for fzf_ripgrep.
@@ -20,8 +34,8 @@
 ]]
 -- KEYS IN FZF:
 --
---  These keys perform special functions.  See fzf documentation for info
---  about general keys available in fzf.
+-- These keys perform special functions while searching with fzf and ripgrep.
+-- See fzf documentation for info about other general keys available in fzf.
 --
 --      ESC             = Exit.
 --      ENTER           = Open the selected file in an editor.
