@@ -488,6 +488,13 @@ local function get_preview_config()
     return table.unpack(args)
 end
 
+local function get_header_text()
+    local header =
+    "ENTER (edit via "..get_editor_nickname()..")  ALT-I (insert)  CTRL-/ (toggle preview)\n"..
+    "CTRL-R (ripgrep mode)  CTRL-F (fzf mode)  CTRL-U (clear query)"
+    return header
+end
+
 add_help_desc("luafunc:fzf_ripgrep", "Show a FZF filtered view with files matching search term")
 
 -- luacheck: globals fzf_ripgrep
@@ -501,8 +508,7 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
     -- If the line is empty, let ripgrep prompt for input inside fzf.
     -- Otherwise, use the current line as the initial ripgrep query.
     local reload_command = get_reload_command()
-    local header = "ENTER (edit via "..get_editor_nickname()..")  CTRL-/ (toggle preview)\nCTRL-R (ripgrep mode)  CTRL-F (fzf mode)"
-    local expect = nil
+    local expect = "alt-i"
     local args = {
         "--height 75%",
         "--reverse",
@@ -511,7 +517,7 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
         -- Delimiter for fields in lines.
         [[--delimiter :]],
         -- Borders.
-        [[--header "]]..header..[["]],
+        [[--header "]]..get_header_text()..[["]],
         [[--header-border line]],
         -- %q adds safe quotes.
         string.format("--query %q", query),
@@ -584,7 +590,7 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
     end
 
     -- Do what the user requested.
-    local action = "edit"
+    local action = (key == "alt-i") and "insert-cursor" or "edit"
     if action == "edit" then
         -- Discard what the user might have started with.
         rl.invokecommand("clink-reset-line")
