@@ -84,9 +84,6 @@
 -- You can optionally set the following environment variables to customize the
 -- behavior.
 --
---          BAT_STYLE               = Defines what will be passed to BAT via
---                                    its '--style="..."' flag.
---
 --          FZF_GIT_CAT             = Defines the preview command used for
 --                                    displaying the file.
 --          FZF_GIT_COLOR           = Control colors in the list:
