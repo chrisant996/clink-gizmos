@@ -9,6 +9,11 @@
 --
 --  You may also set key bindings manually in your .inputrc file.
 --
+--
+-- TODO:  Document fzf_rg.editor.
+-- TODO:  Document how the editor configuration works.
+-- TODO:  Document the environment variables.
+--
 --[[
 
 # Default key bindings for fzf_ripgrep.
@@ -85,7 +90,7 @@ end
 
 maybe_add("fzf_rg.editor", "", "Configures how to invoke the editor",
 [[This is a command line to execute for opening a file into an editor.  If this
-is not set the %FZF_RG_EDITOR% is used instead (and supports the same token
+is not set, then %FZF_RG_EDITOR% is used instead (and supports the same token
 replacements).  If neither are found, then %EDITOR% or notepad are used and the
 filename is appended (if the editor program is recognized then the line number
 may be automatically added with an appropriate command line syntax as well).
