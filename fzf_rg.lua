@@ -536,7 +536,7 @@ end
 
 local function get_header_text()
     local header =
-    "ENTER (edit via "..get_editor_nickname()..")  ALT-I (insert)  CTRL-/ (toggle preview)\n"..
+    "ENTER (edit via "..get_editor_nickname()..")  ALT-I (insert)  CTRL-/ (toggle left preview)  CTRL-\\\\ (toggle bottom preview)\n"..
     "CTRL-R (ripgrep mode)  CTRL-F (fzf mode)  CTRL-U (clear query)"
     return header
 end
