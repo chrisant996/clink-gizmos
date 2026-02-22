@@ -11,13 +11,15 @@
 --
 -- REQUIREMENTS:
 --
--- This requires Clink, FZF, and ripgrep:
+-- This requires Clink, FZF, ripgrep, and optionally bat:
 --
 --  - Clink is available at https://chrisant996.github.io/clink
 --  - FZF is available from https://github.com/junegunn/fzf
 --    (version 0.67.0 or newer work; older versions may or may not work)
 --  - RipGrep is available from https://github.com/BurntSushi/ripgrep
 --    (version 15.1.0 or newer work; older versions may or may not work)
+--  - Bat is available from https://github.com/sharkdp/bat
+--    (version 0.26.1 or newer work; older versions may or may not work)
 --
 --
 -- DEFAULT KEY BINDINGS:
@@ -123,6 +125,19 @@ local function maybe_add(name, ...)
     end
 end
 
+maybe_add("fzf_rg.show_preview", {"right","bottom","off"}, "Show preview window by default in fzf",
+[[The default is 'right', which shows a preview window on the right side.
+Set to 'bottom' to show a preview window on the bottom side.
+Set to 'off' to hide the preview window by default.
+Regardless whether the preview window is initially shown, it can be toggled
+on/off at any time while using fzf.
+
+The preview automatically finds and uses batcat.exe or bat.exe if available in
+the system PATH, otherwise it shows a plain text preview.
+
+The bat tool is available here:  https://github.com/sharkdp/bat]]
+)
+
 maybe_add("fzf_rg.editor", "", "Configures how to invoke the editor",
 [[This is a command line to execute for opening a file into an editor.  If this
 is not set, then %FZF_RG_EDITOR% is used instead (and supports the same token
@@ -196,32 +211,6 @@ local function search_in_paths(name)
             return file, dir
         end
     end
-end
-
-local function get_preview_command()
-    if not cached_preview_command then
-        local def_color = get_color_mode()
-        local def_bat_opts = table.concat({
-            os.getenv("BAT_STYLE") and "" or "--style=full",
-            "--color="..def_color,
-            "--decorations="..def_color,
-            "--pager=never",
-            "--highlight-line {2}",
-        }, " ")
-
-        -- Sometimes bat is installed as batcat
-        local bat = search_in_paths("batcat.exe")
-        if not bat then
-            bat = search_in_paths("bat.exe")
-        end
-        if bat then
-            cached_preview_command = bat:gsub("\\", "\\\\").." "..def_bat_opts.." {1}"
-        else
-            cached_preview_command = "type {1}"
-        end
-        cached_preview_has_bat = bat
-    end
-    return cached_preview_command, cached_preview_has_bat
 end
 
 local function get_reload_command()
@@ -522,13 +511,63 @@ local function tq_command(mode)
 end
 
 local function get_preview_config()
+    local initial = settings.get("fzf_rg.show_preview")
+
+    local function get_preview_start()
+        local orientation = (initial == "off") and "right" or initial
+        local border = orientation == "right" and ",border-left" or ",border-top"
+        return (initial == "off") and
+            orientation..":hidden" or
+            orientation..":40%"..border
+    end
+
+    local function get_preview_cycle(orientation)
+        local border = orientation == "right" and ",border-left" or ",border-top"
+        local order = {
+            orientation..":40%"..border,
+            orientation..":70%"..border,
+            "hidden",
+        }
+        if initial ~= "off" and orientation == initial then
+            table.insert(order, order[1])
+            table.remove(order, 1)
+        end
+        return table.concat(order, "|")
+    end
+
+    local function get_preview_command()
+        if not cached_preview_command then
+            local def_color = get_color_mode()
+            local def_bat_opts = table.concat({
+                os.getenv("BAT_STYLE") and "" or "--style=full",
+                "--color="..def_color,
+                "--decorations="..def_color,
+                "--pager=never",
+                "--highlight-line {2}",
+            }, " ")
+
+            -- Sometimes bat is installed as batcat
+            local bat = search_in_paths("batcat.exe")
+            if not bat then
+                bat = search_in_paths("bat.exe")
+            end
+            if bat then
+                cached_preview_command = bat:gsub("\\", "\\\\").." "..def_bat_opts.." {1}"
+            else
+                cached_preview_command = "type {1}"
+            end
+            cached_preview_has_bat = bat
+        end
+        return cached_preview_command, cached_preview_has_bat
+    end
+
     local preview_command, bat = get_preview_command()
     local header_lines = bat and "4" or "0"
     local args = {
-        [[--bind "ctrl-/:change-preview-window(right:40%,border-left|right:70%,border-left|hidden)"]],
-        [[--bind "ctrl-\\:change-preview-window(bottom:40%,border-top|bottom:70%,border-top|hidden)"]],
+        [[--bind "ctrl-/:change-preview-window(]]..get_preview_cycle("right")..[[)"]],
+        [[--bind "ctrl-\\:change-preview-window(]]..get_preview_cycle("bottom")..[[)"]],
         [[--bind "shift-down:preview-down+preview-down,shift-up:preview-up+preview-up,preview-scroll-up:preview-up+preview-up,preview-scroll-down:preview-down+preview-down"]],
-        [[--preview-window "right:hidden,border-left,+{2}+]]..header_lines..[[/2,~]]..header_lines..[[" ]],
+        [[--preview-window "]]..get_preview_start()..[[,+{2}+]]..header_lines..[[/2,~]]..header_lines..[[" ]],
         [[--preview "]]..preview_command..[["]],
     }
     return table.unpack(args)
