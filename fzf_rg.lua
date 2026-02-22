@@ -41,6 +41,7 @@
 --
 --      ESC             = Exit.
 --      ENTER           = Open the selected file in an editor.
+--      ALT-E           = Open the selected file in an editor without exiting.
 --      ALT-I           = Insert the selected file into the input line.
 --
 --      CTRL-/          = Toggles the preview pane on the right.
@@ -67,126 +68,10 @@
 --------------------------------------------------------------------------------
 -- luacheck: no max line length
 
-if not clink.argmatcher then
-    -- This script invokes itself as a standalone Lua script for some things.
-    if arg[1] == "--tqf" or arg[1] == "--tqr" then
-        -- Transform query between ripgrep mode and fzf mode.
-        local temp = os.getenv("TEMP")
-        if temp then
-            local opposite = { ["f"]="r", ["r"]="f" }
-            local rletter = arg[1]:sub(-1)
-            local wletter = opposite[rletter]
-            -- Write the old mode's query argument to the old mode's file.
-            local wfile = path.join(temp, "fzf_rg_"..wletter..".tmp")
-            local w = io.open(wfile, "w")
-            if w then
-                w:write(arg[2] or "")
-                w:close()
-            end
-            -- Read and print the new mode's query string from its file..
-            local rfile = path.join(temp, "fzf_rg_"..rletter..".tmp")
-            local r = io.open(rfile, "r")
-            if r then
-                print(r:read() or "")
-                r:close()
-            end
-        end
-    end
-    return
-end
+local standalone = not clink.argmatcher
 
--- luacheck: globals fzf_rg_loader_arbiter
-fzf_rg_loader_arbiter = fzf_rg_loader_arbiter or {}
-if fzf_rg_loader_arbiter.initialized then
-    local msg = 'fzf_rg.lua was already fully initialized'
-    if fzf_rg_loader_arbiter.loaded_source then
-        msg = msg..' ('..fzf_rg_loader_arbiter.loaded_source..')'
-    end
-    msg = msg..', but another copy got loaded later'
-    local info = debug.getinfo(1, "S")
-    local source = info and info.source or nil
-    if source then
-        msg = msg..' ('..source..')'
-    end
-    log.info(msg..'.')
-    return
-end
-
---------------------------------------------------------------------------------
--- Settings available via 'clink set'.
---
--- IMPORTANT:  These must be added upon load; attempting to defer this until
--- onbeginedit causes 'clink set' to not know about them.  This is the one part
--- of the script that can't fully support the goal of "newest version wins".
-
-local function maybe_add(name, ...)
-    if settings.get(name) == nil then
-        settings.add(name, ...)
-    end
-end
-
-maybe_add("fzf_rg.show_preview", {"right","bottom","off"}, "Show preview window by default in fzf",
-[[The default is 'right', which shows a preview window on the right side.
-Set to 'bottom' to show a preview window on the bottom side.
-Set to 'off' to hide the preview window by default.
-Regardless whether the preview window is initially shown, it can be toggled
-on/off at any time while using fzf.
-
-The preview automatically finds and uses batcat.exe or bat.exe if available in
-the system PATH, otherwise it shows a plain text preview.
-
-The bat tool is available here:  https://github.com/sharkdp/bat]]
-)
-
-maybe_add("fzf_rg.editor", "", "Configures how to invoke the editor",
-[[This is a command line to execute for opening a file into an editor.  If this
-is not set, then %FZF_RG_EDITOR% is used instead (and supports the same token
-replacements).  If neither are found, then %EDITOR% or notepad are used and the
-filename is appended (if the editor program is recognized then the line number
-may be automatically added with an appropriate command line syntax as well).
-
-The following token replacements can be used in fzf_rg.editor and FZF_RG_EDITOR:
-    - {file} is replaced with the selected filename.  The filename is
-      automatically quoted when needed, but if a quote is adjacent to {file}
-      then quoting is disabled (e.g. an editor might require "{file}@{line}").
-      If {file} is omitted, then the filename is automatically appended to the
-      end of the command.
-    - {line} is replaced with the selected line number.
-    - {$envvar} is replaced with the value of %envvar% (with any newlines
-      replaced with spaces).
-
-Usually an editor supports one of the following formats:
-    - vscode:                       {editor} --goto {file}:{line}
-    - sublime, emacs, hx, micro:    {editor} {file}:{line}
-    - notepad++:                    {editor} -n {line} {file}
-    - ultraedit:                    {editor} file/line
-    - EditPlus:                     {editor} -cursor {line}:1 {file}
-    - pspad:                        {editor} /{line} {file}
-    - JetBrains (idea, storm, ..):  {editor} --line {line} {file}
-    - vim, nano:                    {editor} +{line} {file}
-    - notepad:                      {editor} {file}
-
-If setting from the command line you may need to escape the " character as \".]]
-)
-
-local describemacro_list = {}
-local cached_preview_command
-local cached_preview_has_bat
-local has_rg
-
-local function describe_commands()
-    if describemacro_list then
-        for _, d in ipairs(describemacro_list) do
-            rl.describemacro(d.macro, d.desc)
-        end
-        describemacro_list = nil
-    end
-end
-
-local function add_help_desc(macro, desc)
-    if rl.describemacro and describemacro_list then
-        table.insert(describemacro_list, { macro=macro, desc=desc })
-    end
+local function isnilorempty(s)
+    return (s == nil or s == "")
 end
 
 local function need_quote(word)
@@ -200,81 +85,21 @@ local function maybe_quote(word)
     return word
 end
 
-local function get_color_mode()
-    return os.getenv("NO_COLOR") and "never" or "always"
-end
+local function get_editor()
+    local command = settings.get("fzf_rg.editor") or ""
+    if command == "" then
+        command = os.getenv("FZF_RG_EDITOR") or ""
+    end
 
-local function search_in_paths(...)
-    local paths = (os.getenv("path") or ""):explode(";")
-    local names = {...}
-    for _, dir in ipairs(paths) do
-        for _, name in ipairs(names) do
-            local file = path.join(dir, name)
-            if os.isfile(file) then
-                return file, dir
-            end
+    local found_placeholders = (command:find("{.*}") and true or nil)
+    if command == "" then
+        command = os.getenv("EDITOR") or ""
+        if command == "" then
+            command = path.join(os.getenv("windir"), "System32\\notepad.exe")
         end
     end
-end
 
-local function get_reload_command()
-    -- Check for rg in the system PATH.  Do this every time until found, in
-    -- case the user installs rg in response to the message.
-    local rg = has_rg or search_in_paths("rg.exe", "rg.cmd", "rg.bat")
-    if not rg then
-        return table.concat({
-            "echo Unable to find rg in the system PATH.",
-            "echo.",
-            "echo Get rg from here:  https://github.com/BurntSushi/ripgrep",
-            "echo and make sure it is in the system PATH.",
-        }, "&")
-    end
-    has_rg = true
-
-    -- This is the ripgrep command to run.
-    local rg_command = table.concat({
-        "2>&1", -- So that errors can be seen, esp. from bad FZF_RG_RG_OPTIONS.
-        "rg",
-        "--column",
-        "--line-number",
-        "--no-heading",
-        "--color="..get_color_mode(),
-        "--smart-case",
-        (os.getenv("FZF_RG_RG_OPTIONS") or ""):gsub('"', '\\"'),
-        "{q}",
-    }, " ")
-
-    -- This takes care to only run ripgrep if the query string is not empty.
-    -- This matters because otherwise ripgrep immediately starts loading all
-    -- file content under the current directory (which can be over 100GB in
-    -- in some repos).  And all that's visible is always only the first few
-    -- lines of the first file; not very useful.
-
-    -- How this technique works is nuanced; here is a detailed breakdown:
-    return
-        -- Echo an escaped form of the query string.  When empty, it is ^"^"
-        -- which is printed as "", which is 2 characters long.  Note carefully
-        -- that there is no space between this and the subsequent | operator.
-        -- The presence of a space would change the regex pattern to match.
-        [[echo {q}]]..
-        -- Pipe into findstr and look for at least 3 characters, and redirect to
-        -- nul so the matched string is not printed.
-        [[| findstr ... >nul]]..
-        -- If the pattern matched (not empty) then run ripgrep.
-        [[&& ]]..rg_command..
-        -- If the pattern did not match then clear errorlevel, otherwise fzf
-        -- thinks the command failed and reports an error.
-        [[|| ver >nul]]
-
-    -- echo ^"^"| findstr ... >nul&& echo match|| echo mismatch
-    -- mismatch
-    --
-    -- echo ^" ^"| findstr ... >nul&& echo match|| echo mismatch
-    -- match
-end
-
-local function isnilorempty(s)
-    return (s == nil or s == "")
+    return command, found_placeholders
 end
 
 local function apply_placeholders(command, file, line)
@@ -447,33 +272,6 @@ local function infer_placeholders(command, found_placeholders, line)
     return command, added_placeholders
 end
 
-local function get_editor()
-    local command = settings.get("fzf_rg.editor") or ""
-    if command == "" then
-        command = os.getenv("FZF_RG_EDITOR") or ""
-    end
-
-    local found_placeholders = (command:find("{.*}") and true or nil)
-    if command == "" then
-        command = os.getenv("EDITOR") or ""
-        if command == "" then
-            command = path.join(os.getenv("windir"), "System32\\notepad.exe")
-        end
-    end
-
-    return command, found_placeholders
-end
-
-local function get_editor_nickname()
-    local command, found_placeholders = get_editor()
-    local command_filename = extract_command_filename(command, found_placeholders)
-    command_filename = command_filename and path.getbasename(command_filename) or command
-    if console.ellipsify then
-        command_filename = console.ellipsify(command_filename, 16)
-    end
-    return command_filename
-end
-
 local function edit_file(rl_buffer, file, line)
     local command, found_placeholders = get_editor()
 
@@ -489,16 +287,238 @@ local function edit_file(rl_buffer, file, line)
 
     -- Avoid garbling the prompt and input line display in case the editor is a
     -- terminal-based program.
-    rl_buffer:beginoutput()
+    if rl_buffer then
+        rl_buffer:beginoutput()
+    end
 
     -- If the command line to execute begins with a quote and contains
     -- more than one pair of quotes, then special quote handling is
     -- necessary.
+    local pfx = standalone and 'start "Edit File" ' or ''
     if command:find('^%s*"') then
-        os.execute('cmd /s /c "'..command..'"')
+        os.execute(pfx..'cmd /s /c "'..command..'"')
     else
-        os.execute(command)
+        os.execute(pfx..command)
     end
+end
+
+--------------------------------------------------------------------------------
+-- While loaded into Clink, this script invokes itself as a standalone Lua
+-- script to perform certain operations.
+
+if standalone then
+    if arg[1] == "--tqf" or arg[1] == "--tqr" then
+        -- Transform query between ripgrep mode and fzf mode.
+        local temp = os.getenv("TEMP")
+        if temp then
+            local opposite = { ["f"]="r", ["r"]="f" }
+            local rletter = arg[1]:sub(-1)
+            local wletter = opposite[rletter]
+            -- Write the old mode's query argument to the old mode's file.
+            local wfile = path.join(temp, "fzf_rg_"..wletter..".tmp")
+            local w = io.open(wfile, "w")
+            if w then
+                w:write(arg[2] or "")
+                w:close()
+            end
+            -- Read and print the new mode's query string from its file..
+            local rfile = path.join(temp, "fzf_rg_"..rletter..".tmp")
+            local r = io.open(rfile, "r")
+            if r then
+                print(r:read() or "")
+                r:close()
+            end
+        end
+    elseif arg[1] == "--edit" then
+        -- Launch an editor with the file.
+        edit_file(nil, arg[3], arg[2])
+    else
+        os.execute([[start "error invoking fzf_rg.lua" cmd /c echo Unrecognized usage.^&pause]])
+    end
+    return
+end
+
+--------------------------------------------------------------------------------
+-- Delayed initialization shim.  See section at end of file for more info.
+
+-- luacheck: globals fzf_rg_loader_arbiter
+fzf_rg_loader_arbiter = fzf_rg_loader_arbiter or {}
+if fzf_rg_loader_arbiter.initialized then
+    local msg = 'fzf_rg.lua was already fully initialized'
+    if fzf_rg_loader_arbiter.loaded_source then
+        msg = msg..' ('..fzf_rg_loader_arbiter.loaded_source..')'
+    end
+    msg = msg..', but another copy got loaded later'
+    local info = debug.getinfo(1, "S")
+    local source = info and info.source or nil
+    if source then
+        msg = msg..' ('..source..')'
+    end
+    log.info(msg..'.')
+    return
+end
+
+local describemacro_list = {}
+local cached_preview_command
+local cached_preview_has_bat
+local has_rg
+
+local function describe_commands()
+    if describemacro_list then
+        for _, d in ipairs(describemacro_list) do
+            rl.describemacro(d.macro, d.desc)
+        end
+        describemacro_list = nil
+    end
+end
+
+local function add_help_desc(macro, desc)
+    if rl.describemacro and describemacro_list then
+        table.insert(describemacro_list, { macro=macro, desc=desc })
+    end
+end
+
+--------------------------------------------------------------------------------
+-- Settings available via 'clink set'.
+--
+-- IMPORTANT:  These must be added upon load; attempting to defer this until
+-- onbeginedit causes 'clink set' to not know about them.  This is the one part
+-- of the script that can't fully support the goal of "newest version wins".
+
+local function maybe_add(name, ...)
+    if settings.get(name) == nil then
+        settings.add(name, ...)
+    end
+end
+
+maybe_add("fzf_rg.show_preview", {"right","bottom","off"}, "Show preview window by default in fzf",
+[[The default is 'right', which shows a preview window on the right side.
+Set to 'bottom' to show a preview window on the bottom side.
+Set to 'off' to hide the preview window by default.
+Regardless whether the preview window is initially shown, it can be toggled
+on/off at any time while using fzf.
+
+The preview automatically finds and uses batcat.exe or bat.exe if available in
+the system PATH, otherwise it shows a plain text preview.
+
+The bat tool is available here:  https://github.com/sharkdp/bat]]
+)
+
+maybe_add("fzf_rg.editor", "", "Configures how to invoke the editor",
+[[This is a command line to execute for opening a file into an editor.  If this
+is not set, then %FZF_RG_EDITOR% is used instead (and supports the same token
+replacements).  If neither are found, then %EDITOR% or notepad are used and the
+filename is appended (if the editor program is recognized then the line number
+may be automatically added with an appropriate command line syntax as well).
+
+The following token replacements can be used in fzf_rg.editor and FZF_RG_EDITOR:
+    - {file} is replaced with the selected filename.  The filename is
+      automatically quoted when needed, but if a quote is adjacent to {file}
+      then quoting is disabled (e.g. an editor might require "{file}@{line}").
+      If {file} is omitted, then the filename is automatically appended to the
+      end of the command.
+    - {line} is replaced with the selected line number.
+    - {$envvar} is replaced with the value of %envvar% (with any newlines
+      replaced with spaces).
+
+Usually an editor supports one of the following formats:
+    - vscode:                       {editor} --goto {file}:{line}
+    - sublime, emacs, hx, micro:    {editor} {file}:{line}
+    - notepad++:                    {editor} -n {line} {file}
+    - ultraedit:                    {editor} file/line
+    - EditPlus:                     {editor} -cursor {line}:1 {file}
+    - pspad:                        {editor} /{line} {file}
+    - JetBrains (idea, storm, ..):  {editor} --line {line} {file}
+    - vim, nano:                    {editor} +{line} {file}
+    - notepad:                      {editor} {file}
+
+If setting from the command line you may need to escape the " character as \".]]
+)
+
+--------------------------------------------------------------------------------
+-- Helpers.
+
+local function get_color_mode()
+    return os.getenv("NO_COLOR") and "never" or "always"
+end
+
+local function search_in_paths(...)
+    local paths = (os.getenv("path") or ""):explode(";")
+    local names = {...}
+    for _, dir in ipairs(paths) do
+        for _, name in ipairs(names) do
+            local file = path.join(dir, name)
+            if os.isfile(file) then
+                return file, dir
+            end
+        end
+    end
+end
+
+local function get_reload_command()
+    -- Check for rg in the system PATH.  Do this every time until found, in
+    -- case the user installs rg in response to the message.
+    local rg = has_rg or search_in_paths("rg.exe", "rg.cmd", "rg.bat")
+    if not rg then
+        return table.concat({
+            "echo Unable to find rg in the system PATH.",
+            "echo.",
+            "echo Get rg from here:  https://github.com/BurntSushi/ripgrep",
+            "echo and make sure it is in the system PATH.",
+        }, "&")
+    end
+    has_rg = true
+
+    -- This is the ripgrep command to run.
+    local rg_command = table.concat({
+        "2>&1", -- So that errors can be seen, esp. from bad FZF_RG_RG_OPTIONS.
+        "rg",
+        "--column",
+        "--line-number",
+        "--no-heading",
+        "--color="..get_color_mode(),
+        "--smart-case",
+        (os.getenv("FZF_RG_RG_OPTIONS") or ""):gsub('"', '\\"'),
+        "{q}",
+    }, " ")
+
+    -- This takes care to only run ripgrep if the query string is not empty.
+    -- This matters because otherwise ripgrep immediately starts loading all
+    -- file content under the current directory (which can be over 100GB in
+    -- in some repos).  And all that's visible is always only the first few
+    -- lines of the first file; not very useful.
+
+    -- How this technique works is nuanced; here is a detailed breakdown:
+    return
+        -- Echo an escaped form of the query string.  When empty, it is ^"^"
+        -- which is printed as "", which is 2 characters long.  Note carefully
+        -- that there is no space between this and the subsequent | operator.
+        -- The presence of a space would change the regex pattern to match.
+        [[echo {q}]]..
+        -- Pipe into findstr and look for at least 3 characters, and redirect to
+        -- nul so the matched string is not printed.
+        [[| findstr ... >nul]]..
+        -- If the pattern matched (not empty) then run ripgrep.
+        [[&& ]]..rg_command..
+        -- If the pattern did not match then clear errorlevel, otherwise fzf
+        -- thinks the command failed and reports an error.
+        [[|| ver >nul]]
+
+    -- echo ^"^"| findstr ... >nul&& echo match|| echo mismatch
+    -- mismatch
+    --
+    -- echo ^" ^"| findstr ... >nul&& echo match|| echo mismatch
+    -- match
+end
+
+local function get_editor_nickname()
+    local command, found_placeholders = get_editor()
+    local command_filename = extract_command_filename(command, found_placeholders)
+    command_filename = command_filename and path.getbasename(command_filename) or command
+    if console.ellipsify then
+        command_filename = console.ellipsify(command_filename, 16)
+    end
+    return command_filename
 end
 
 local function extract_file_and_line(item)
@@ -526,6 +546,34 @@ local function tq_command(mode)
     local exe = string.format("%q", CLINK_EXE):gsub('"', '\\"')
     local lua = string.format("%q", script):gsub('"', '\\"')
     return string.format("2>nul %s lua %s --tq%s {q}", exe, lua, mode)
+end
+
+local function caretify(s)
+    return s:gsub([[(['"&|<>()+,=^])]], "^^^%1")
+end
+
+local function edit_command()
+    local script
+    do
+        local why_not
+        local info = debug.getinfo(1, "S")
+        if info.source and info.source:sub(1, 1) == "@" then
+            script = info.source:sub(2)
+        elseif info.source then
+            why_not = string.format("Unexpected source path '%s'.", info.source)
+        else
+            why_not = string.format("Unable to get source path for script.")
+        end
+        if why_not then
+            log.info(why_not)
+            return [[start \"Edit File\" cmd.exe /c echo Unable to edit file.^&echo ]]..caretify(why_not)..[[^&pause]]
+        end
+    end
+    -- Any quotes need to be escaped the same way {q} does, since the resulting
+    -- string gets embedded inside a quoted string.
+    local exe = string.format("%q", CLINK_EXE):gsub('"', '\\"')
+    local lua = string.format("%q", script):gsub('"', '\\"')
+    return string.format("2>nul %s lua %s --edit {2} {1}", exe, lua)
 end
 
 local function get_preview_config()
@@ -593,10 +641,27 @@ end
 
 local function get_header_text()
     local header =
-    "ENTER (edit via "..get_editor_nickname()..")  ALT-I (insert)  CTRL-/ or \\\\ (preview at right or bottom)\n"..
+    "ENTER or ALT-E (edit via "..get_editor_nickname()..")  ALT-I (insert)  CTRL-/ or \\\\ (toggle preview)\n"..
     "CTRL-R (ripgrep mode)  CTRL-F (fzf mode)  CTRL-U (clear query)"
     return header
 end
+
+local function save_var(vars, name, value, append)
+    vars[name] = os.getenv(name) or ""
+    if append and vars[name] ~= "" then
+        value = vars[name].." "..value
+    end
+    os.setenv(name, value)
+end
+
+local function restore_vars(vars)
+    for name, value in pairs(vars) do
+        os.setenv(name, (value ~= "") and value or nil)
+    end
+end
+
+--------------------------------------------------------------------------------
+-- The command(s).
 
 add_help_desc("luafunc:fzf_ripgrep", "Show a FZF filtered view with files matching search term")
 
@@ -636,6 +701,8 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
         -- Query.
         [[--bind "start:reload(]]..reload_command..[[)+unbind(ctrl-r)"]],
         [[--bind "change:reload(]]..reload_command..[[)"]],
+        -- Actions.
+        [[--bind "alt-e:execute-silent(]]..edit_command()..[[)"]],
         -- Preview.
         get_preview_config(),
     }
@@ -659,11 +726,14 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
     local key
     local results = {}
     do
-        local old_opts = os.getenv("FZF_DEFAULT_OPTS")
+        local old_vars = {}
         local fzf_opts = table.concat(args, " ")
-        os.setenv("FZF_DEFAULT_OPTS", (old_opts or "").." "..fzf_opts)
+        save_var(old_vars, "FZF_DEFAULT_OPTS", fzf_opts, true--[[append]])
+        if not isnilorempty(settings.get("fzf_rg.editor")) then
+            save_var(old_vars, "FZF_RG_EDITOR", settings.get("fzf_rg.editor"))
+        end
         local handle = io.popen("fzf")
-        os.setenv("FZF_DEFAULT_OPTS", old_opts)
+        restore_vars(old_vars)
         if not handle then
             rl_buffer:ding()
             return
@@ -729,6 +799,12 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
     end
 end
 
+--------------------------------------------------------------------------------
+-- Delayed initialization shim.  Check for multiple copies of the script being
+-- loaded in the same session.  This became necessary because Cmder wanted to
+-- include fzf.lua, but users may have already installed a separate copy of the
+-- script.
+
 local function apply_default_bindings()
     if rl.getbinding then
         for _, keymap in ipairs({"emacs", "vi-command", "vi-insert"}) do
@@ -741,12 +817,6 @@ local function apply_default_bindings()
         end
     end
 end
-
---------------------------------------------------------------------------------
--- Delayed initialization shim.  Check for multiple copies of the script being
--- loaded in the same session.  This became necessary because Cmder wanted to
--- include fzf.lua, but users may have already installed a separate copy of the
--- script.
 
 fzf_rg_loader_arbiter.ensure_initialized = function()
     assert(not fzf_rg_loader_arbiter.initialized)
