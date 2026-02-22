@@ -243,7 +243,7 @@ local function apply_placeholders(command, file, line)
         -- Expand the placeholder.
         local placeholder = command:sub(s, e):lower()
         if placeholder:find("^.%$") then
-            applied = applied..os.getenv(command:sub(s + 2, e - 1))
+            applied = applied..(os.getenv(command:sub(s + 2, e - 1)):gsub("\n", " "))
         elseif placeholder == "{line}" then
             applied = applied..(line or "1")
         elseif placeholder == "{file}" then
