@@ -78,14 +78,14 @@ if not clink.argmatcher then
             local wfile = path.join(temp, "fzf_rg_"..wletter..".tmp")
             local w = io.open(wfile, "w")
             if w then
-                w:write(arg[2])
+                w:write(arg[2] or "")
                 w:close()
             end
             -- Read and print the new mode's query string from its file..
             local rfile = path.join(temp, "fzf_rg_"..rletter..".tmp")
             local r = io.open(rfile, "r")
             if r then
-                print(r:read())
+                print(r:read() or "")
                 r:close()
             end
         end
