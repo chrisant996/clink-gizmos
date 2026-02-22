@@ -93,12 +93,6 @@ if not clink.argmatcher then
     return
 end
 
-if os.getenv("WHICH_RIPGREP_SCRIPT") ~= "chrisant996" then
-    return
-else
-    print("\x1b[3mUsing fzf_rg.lua script.\x1b[m")
-end
-
 -- luacheck: globals fzf_rg_loader_arbiter
 fzf_rg_loader_arbiter = fzf_rg_loader_arbiter or {}
 if fzf_rg_loader_arbiter.initialized then
@@ -542,7 +536,7 @@ end
 
 local function get_header_text()
     local header =
-    "ENTER (edit via "..get_editor_nickname()..")  ALT-I (insert)  CTRL-/ (toggle preview)\n"..
+    "ENTER (edit via "..get_editor_nickname()..")  ALT-I (insert)  CTRL-/ (toggle left preview)  CTRL-\\\\ (toggle bottom preview)\n"..
     "CTRL-R (ripgrep mode)  CTRL-F (fzf mode)  CTRL-U (clear query)"
     return header
 end
