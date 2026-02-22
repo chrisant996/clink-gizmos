@@ -159,13 +159,14 @@ end
 
 local function get_preview_command()
     if not cached_preview_command then
-        local def_style = os.getenv("BAT_STYLE") or "full"
         local def_color = get_color_mode()
-        local def_bat_opts = "--style=\""..def_style.."\" "..
-                             "--color="..def_color.." "..
-                             "--decorations="..def_color.." "..
-                             "--pager=never "..
-                             "--highlight-line {2}"
+        local def_bat_opts = table.concat({
+            os.getenv("BAT_STYLE") and "" or "--style=full",
+            "--color="..def_color,
+            "--decorations="..def_color,
+            "--pager=never",
+            "--highlight-line {2}",
+        }, " ")
 
         -- Sometimes bat is installed as batcat
         local bat = search_in_paths("batcat.exe")
