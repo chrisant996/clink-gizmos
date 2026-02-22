@@ -45,6 +45,8 @@
 -- ENVIRONMENT VARIABLES:
 --
 --  FZF_RG_EDITOR       = Command to launch editor (expands placeholder tokens).
+--  FZF_RG_FZF_OPTIONS  = Options to add to the fzf commands.
+--  FZF_RG_RG_OPTIONS   = Options to add to the rg commands.
 
 --------------------------------------------------------------------------------
 -- luacheck: no max line length
@@ -214,7 +216,16 @@ end
 
 local function get_reload_command()
     -- This is the ripgrep command to run.
-    local rg_command = [[rg --column --line-number --no-heading --color=]]..get_color_mode()..[[ --smart-case {q}]]
+    local rg_command = table.concat({
+        "rg",
+        "--column",
+        "--line-number",
+        "--no-heading",
+        "--color="..get_color_mode(),
+        "--smart-case",
+        (os.getenv("FZF_RG_RG_OPTIONS") or ""):gsub('"', '\\"'),
+        "{q}",
+    }, " ")
 
     -- This takes care to only run ripgrep if the query string is not empty.
     -- This matters because otherwise ripgrep immediately starts loading all
@@ -537,6 +548,8 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
     local args = {
         "--height 75%",
         "--reverse",
+        -- Allow some customization.
+        os.getenv("FZF_RG_FZF_OPTIONS") or "",
         -- Preserve and display ANSI color codes.
         "--ansi",
         -- Delimiter for fields in lines.
