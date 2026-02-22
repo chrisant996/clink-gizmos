@@ -178,7 +178,7 @@ local function get_preview_command()
             cached_preview_command = "type {1}"
         end
     end
-    return cached_preview_command
+    return cached_preview_command, bat
 end
 
 local function get_reload_command()
@@ -469,6 +469,18 @@ local function tq_command(mode)
     return string.format("2>nul %s lua %s --tq%s {q}", exe, lua, mode)
 end
 
+local function get_preview_config()
+    local preview_command, bat = get_preview_command()
+    local header_lines = bat and "4" or "0"
+    local args = {
+        [[--bind "ctrl-/:change-preview-window(right:40%|70%|hidden)"]],
+        [[--bind "shift-down:preview-down+preview-down,shift-up:preview-up+preview-up,preview-scroll-up:preview-up+preview-up,preview-scroll-down:preview-down+preview-down"]],
+        [[--preview-window "right:hidden,border-left,+{2}+]]..header_lines..[[/2,~]]..header_lines..[[" ]],
+        [[--preview "]]..preview_command..[["]],
+    }
+    return table.unpack(args)
+end
+
 add_help_desc("luafunc:fzf_ripgrep", "Show a FZF filtered view with files matching search term")
 
 -- luacheck: globals fzf_ripgrep
@@ -482,7 +494,6 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
     -- If the line is empty, let ripgrep prompt for input inside fzf.
     -- Otherwise, use the current line as the initial ripgrep query.
     local reload_command = get_reload_command()
-    local preview_command = get_preview_command()
     local header = "ENTER (edit via "..get_editor_nickname()..")  CTRL-/ (toggle preview)\nCTRL-R (ripgrep mode)  CTRL-F (fzf mode)"
     local expect = nil
     local args = {
@@ -508,10 +519,7 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
         [[--bind "start:reload(]]..reload_command..[[)+unbind(ctrl-r)"]],
         [[--bind "change:reload(]]..reload_command..[[)"]],
         -- Preview.
-        [[--bind "ctrl-/:change-preview-window(right:40%|70%|hidden)"]],
-        [[--bind "shift-down:preview-down+preview-down,shift-up:preview-up+preview-up,preview-scroll-up:preview-up+preview-up,preview-scroll-down:preview-down+preview-down"]],
-        [[--preview-window "right:hidden,border-left,+{2}+4/2,~4" ]],
-        [[--preview "]]..preview_command..[["]],
+        get_preview_config(),
     }
 
     -- When expect is a comma separated list of key names, any of those keys
