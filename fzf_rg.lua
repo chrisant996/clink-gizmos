@@ -291,10 +291,18 @@ local function edit_file(rl_buffer, file, line)
         rl_buffer:beginoutput()
     end
 
+    -- If it isn't recognizable as a GUI program, then it needs to be wrapped
+    -- with "start" to prevent waiting for the editor to exit.
+    local start = standalone
+    if not start and os.getexesubsystem then
+        local executable = extract_command_filename(command)
+        start = executable and os.getexesubsystem(executable) ~= "GUI"
+    end
+
     -- If the command line to execute begins with a quote and contains
     -- more than one pair of quotes, then special quote handling is
     -- necessary.
-    local pfx = standalone and 'start "Edit File" ' or ''
+    local pfx = start and 'start "Edit File" ' or ''
     if command:find('^%s*"') then
         os.execute(pfx..'cmd /s /c "'..command..'"')
     else
