@@ -84,9 +84,6 @@
 -- You can optionally set the following environment variables to customize the
 -- behavior.
 --
---          BAT_STYLE               = Defines what will be passed to BAT via
---                                    its '--style="..."' flag.
---
 --          FZF_GIT_CAT             = Defines the preview command used for
 --                                    displaying the file.
 --          FZF_GIT_COLOR           = Control colors in the list:
@@ -264,9 +261,12 @@ local function __fzf_git_cat()
     end
 
     if __fzf_git_cat_command == nil then
-        local def_style = os.getenv("BAT_STYLE") or "full"
         local def_color = __fzf_git_color(true)
-        local def_opts = "--style=\""..def_style.."\" --color="..def_color.." --pager=never"
+        local def_opts = table.concat({
+            (os.getenv("BAT_STYLE") and "" or "--style=full"),
+            "--color="..def_color,
+            "--pager=never",
+        }, " ")
 
         -- Sometimes bat is installed as batcat
         cat = search_in_paths("batcat.exe")
