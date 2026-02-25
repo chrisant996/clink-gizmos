@@ -55,8 +55,28 @@
 --
 -- EDITOR:
 --
---  TODO:  Document fzf_rg.editor.
---  TODO:  Document how the editor configuration works (and placeholder tokens).
+-- The following token replacements can be used in fzf_rg.editor and
+-- FZF_RG_EDITOR:
+--      - {file} is replaced with the selected filename.  The filename is
+--        automatically quoted when needed, but if a quote is adjacent to
+--        {file} then quoting is disabled (e.g. an editor might require
+--        "{file}@{line}").
+--        If {file} is omitted, then the filename is automatically appended
+--        to the end of the command.
+--      - {line} is replaced with the selected line number.
+--      - {$envvar} is replaced with the value of %envvar% (with any newlines
+--        replaced with spaces).
+--
+-- Usually an editor supports one of the following formats:
+--      - vscode:                       {editor} --goto {file}:{line}
+--      - sublime, emacs, hx, micro:    {editor} {file}:{line}
+--      - notepad++:                    {editor} -n {line} {file}
+--      - ultraedit:                    {editor} file/line
+--      - EditPlus:                     {editor} -cursor {line}:1 {file}
+--      - pspad:                        {editor} /{line} {file}
+--      - JetBrains (idea, storm, ..):  {editor} --line {line} {file}
+--      - vim, nano:                    {editor} +{line} {file}
+--      - notepad:                      {editor} {file}
 --
 --
 -- ENVIRONMENT VARIABLES:
