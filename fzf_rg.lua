@@ -463,6 +463,11 @@ local function search_in_paths(...)
     end
 end
 
+local function escape_quotes(s, how)
+    how = how or '\\"'
+    return s:gsub('"', how)
+end
+
 local function get_reload_command()
     -- Check for rg in the system PATH.  Do this every time until found, in
     -- case the user installs rg in response to the message.
@@ -486,7 +491,7 @@ local function get_reload_command()
         "--no-heading",
         "--color="..get_color_mode(),
         "--smart-case",
-        (os.getenv("FZF_RG_RG_OPTIONS") or ""):gsub('"', '\\"'),
+        escape_quotes(os.getenv("FZF_RG_RG_OPTIONS") or ""),
         "{q}",
     }, " ")
 
@@ -551,8 +556,8 @@ local function tq_command(mode)
     end
     -- Any quotes need to be escaped the same way {q} does, since the resulting
     -- string gets embedded inside a quoted string.
-    local exe = string.format("%q", CLINK_EXE):gsub('"', '\\"')
-    local lua = string.format("%q", script):gsub('"', '\\"')
+    local exe = escape_quotes(string.format("%q", CLINK_EXE))
+    local lua = escape_quotes(string.format("%q", script))
     return string.format("2>nul %s lua %s --tq%s {q}", exe, lua, mode)
 end
 
@@ -579,8 +584,8 @@ local function edit_command()
     end
     -- Any quotes need to be escaped the same way {q} does, since the resulting
     -- string gets embedded inside a quoted string.
-    local exe = string.format("%q", CLINK_EXE):gsub('"', '\\"')
-    local lua = string.format("%q", script):gsub('"', '\\"')
+    local exe = escape_quotes(string.format("%q", CLINK_EXE))
+    local lua = escape_quotes(string.format("%q", script))
     return string.format("2>nul %s lua %s --edit {2} {1}", exe, lua)
 end
 
@@ -626,7 +631,9 @@ local function get_preview_config()
                 bat = search_in_paths("bat.exe")
             end
             if bat then
-                cached_preview_command = bat:gsub("\\", "\\\\").." "..def_bat_opts.." {1}"
+                bat = bat:gsub("\\", "\\\\")
+                bat = escape_quotes(maybe_quote(bat))
+                cached_preview_command = bat.." "..def_bat_opts.." {1}"
             else
                 cached_preview_command = "type {1}"
             end
