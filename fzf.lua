@@ -1200,6 +1200,16 @@ local borderstyle = clink.argmatcher():addarg({
 })
 local borderlabel = clink.argmatcher():addarg({fromhistory=true})
 local borderlabelpos = clink.argmatcher():addarg({fromhistory=true})
+local infocommand = clink.argmatcher():addarg({fromhistory=true})
+local ghosttext = clink.argmatcher():addarg({fromhistory=true})
+local inputlabel = clink.argmatcher():addarg({fromhistory=true})
+local inputlabelpos = clink.argmatcher():addarg({fromhistory=true})
+local listlabel = clink.argmatcher():addarg({fromhistory=true})
+local listlabelpos = clink.argmatcher():addarg({fromhistory=true})
+local headerlabel = clink.argmatcher():addarg({fromhistory=true})
+local headerlabelpos = clink.argmatcher():addarg({fromhistory=true})
+local footerlabel = clink.argmatcher():addarg({fromhistory=true})
+local footerlabelpos = clink.argmatcher():addarg({fromhistory=true})
 local margin = clink.argmatcher():addarg({fromhistory=true, loopchars=',', '0', '1', '2'})
 local padding = clink.argmatcher():addarg({fromhistory=true, loopchars=',', '0', '1', '2'})
 local infostyle = addexarg(clink.argmatcher(), {
@@ -1208,11 +1218,19 @@ local infostyle = addexarg(clink.argmatcher(), {
     { 'inline',         'Display on the same line as the prompt' },
     { 'hidden',         'Do not display finder info' },
 })
+local styles = addexarg(clink.argmatcher(), {
+    nosort=true,
+    { 'default',        'Borders between sections and around preview' },
+    { 'minimal',        'Borders between sections' },
+    { 'full',           'Borders around all sections' },
+})
 local prompt = clink.argmatcher():addarg({fromhistory=true, '"> "'})
 local pointer = clink.argmatcher():addarg({fromhistory=true, '">"', '"*"'})
 local marker = clink.argmatcher():addarg({fromhistory=true, '">"', '"*"'})
+local multilinemarker = clink.argmatcher():addarg({fromhistory=true})
 local header = clink.argmatcher():addarg({fromhistory=true})
 local headerlines = clink.argmatcher():addarg({fromhistory=true})
+local footer = clink.argmatcher():addarg({fromhistory=true})
 local ellipsis = clink.argmatcher():addarg({fromhistory=true, '..', '...', '…'})
 local tabstop = clink.argmatcher():addarg({fromhistory=true, '8'})
 local colspec = clink.argmatcher():addarg({fromhistory=true, loopchars=','})
@@ -1243,6 +1261,41 @@ local filter = clink.argmatcher():addarg({fromhistory=true})
 local expect = clink.argmatcher():addarg({fromhistory=true, loopchars=','})
 local separatorstr = clink.argmatcher():addarg({fromhistory=true})
 local scrollbarchars = clink.argmatcher():addarg({fromhistory=true})
+local tailnum = clink.argmatcher():addarg({fromhistory=true})
+local wrapsign = clink.argmatcher():addarg({fromhistory=true})
+local numgap = clink.argmatcher():addarg({'0', '1', '2', '3', '4', '5'})
+local freezeleft = clink.argmatcher():addarg({fromhistory=true})
+local freezeright = clink.argmatcher():addarg({fromhistory=true})
+local gutterchar = clink.argmatcher():addarg({fromhistory=true})
+local gutterrawchar = clink.argmatcher():addarg({fromhistory=true})
+local walkeropts = clink.argmatcher():addarg({
+    nosort=true,
+    'file',
+    'file,follow',
+    'file,follow,hidden',
+    'file,hidden',
+    'file,dir',
+    'file,dir,follow',
+    'file,dir,follow,hidden',
+    'file,dir,hidden',
+    'dir',
+    'dir,follow',
+    'dir,follow,hidden',
+    'dir,hidden',
+})
+local walkerroot = clink.argmatcher()
+walkerroot:addarg({
+    clink.dirmatches,
+    onlink=function(link, arg_index, word, word_index, line_state, user_data) -- luacheck: no unused
+        local wc = line_state:getwordcount()
+        if word_index < wc and not line_state:getword(word_index + 1):find("^%-") then
+            -- The --walker-root flag accepts an unlimited number of dirs until
+            -- another flag is encountered.
+            return walkerroot
+        end
+    end,
+})
+local walkerskip = clink.argmatcher():addarg(clink.dirmatches)
 
 local function create_argmatcher()
     local argmatcher = clink.argmatcher('fzf')
@@ -1252,89 +1305,142 @@ local function create_argmatcher()
 
     addexflags(argmatcher, {
         opteq=true,
-        -- Search options
+        -- SEARCH
+        { '-e',                             'Enable Exact-match' },
+        { '--exact',                        'Enable Exact-match' },
         { '-x',                             'Extended-search mode (enabled by default; +x or --no-extended to disable)' },
         { '+x',                             'Disable extended-search mode' },
         { '--extended',                     'Extended-search mode (enabled by default; +x or --no-extended to disable)' },
         { '--no-extended',                  'Disable extended-search mode' },
-        { '-e',                             'Enable Exact-match' },
-        { '--exact',                        'Enable Exact-match' },
         { '-i',                             'Case-insensitive match (default: smart-case match; +i for case-sensitive match)' },
         { '+i',                             'Case-sensitive match' },
-        { '--literal',                      'Do not normalize latin script letters before matching' },
+        { '--ignore-case',                  'Case-insensitive match (default: smart-case match; +i for case-sensitive match)' },
+        { '--no-ignore-case',               'Case-sensitive match' },
+        { '--smart-case',                   'Smart-case match (default); case-insensitive unless query contains uppercase' },
         { '--scheme='..scheme, 'SCHEME',    'Scoring scheme' },
-        { '--algo='..algos, 'TYPE',         'Fuzzy matching algorithm' },
         { '-n'..nth, ' N[,..]',             'Comma-separated list of field index expressions for limiting search scope (non-zero integer or range expression "1..4")' },
         { '--nth='..nth, 'N[,..]',          'Comma-separated list of field index expressions for limiting search scope (non-zero integer or range expression "1..4")' },
         { '--with-nth='..nth, 'N[,..]',     'Transform the presentation of each line using field index expressions' },
+        { '--accept-nth='..nth, 'N[,..]',   'Define which fields to print on accept' },
         { '-d'..delim, ' STR',              'Field delimiter regex (default: AWK-style)' },
         { '--delimiter='..delim, 'STR',     'Field delimiter regex (default: AWK-style)' },
-        { '--disabled',                     'Do not perform search (simple selector interface)' },
         { '+s',                             'Do not sort the result' },
         { '--no-sort',                      'Do not sort the result' },
-        { '--track',                        'Track the current selection when the result is updated' },
-        { '--tac',                          'Reverse the order of the input' },
+        { '--literal',                      'Do not normalize latin script letters before matching' },
+        { '--tail='..tailnum, 'NUM',        'Maximum number of items to keep in memory' },
+        { '--disabled',                     'Do not perform search (simple selector interface)' },
         { '--tiebreak='..criteria, 'CRI[,..]', 'Comma-separated list of sort criteria to apply when the scores are tied (default: length)' },
 
-        -- Interface options
-        { '-m',                             'Enable multi-select with tab/shift-tab' },
-        { '--multi',                        'Enable multi-select with tab/shift-tab' },
-        { '--multi='..multimax, 'MAX',      'Enable multi-select with tab/shift-tab', opteq=false },
-        { '--no-mouse',                     'Disable mouse' },
-        { '--bind='..keybinds, 'KEYBINDS',  'Custom key bindings. Refer to the man page' },
-        { '--cycle',                        'Enable cyclic scroll' },
-        { '--keep-right',                   'Keep the right end of the line visible on overflow' },
-        { '--scroll-off='..scrolloff, 'LINES', 'Number of screen lines to keep above or below when scrolling to the top or to the bottom (default: 0)' },
-        { '--no-hscroll',                   'Disable horizontal scroll' },
-        { '--hscroll-off='..hscrolloff, 'COLS', 'Number of screen columns to keep to the right of the highlighted substring (default: 10)' },
-        { '--filepath-word',                'Make word-wise movements respect path separators' },
-        { '--jump-labels='..jumplabels, 'CHARS', 'Label characters for jump and jump-accept' },
+        -- INPUT/OUTPUT
+        { '--read0',                        'Read input delimited by ASCII NUL characters' },
+        { '--print0',                       'Print output delimited by ASCII NUL characters' },
+        { '--ansi',                         'Enable processing of ANSI color codes' },
+        { '--sync',                         'Synchronous search for multi-staged filtering' },
 
-        -- Layout options
+        -- GLOBAL STYLE
+        { '--style='..styles, 'PRESET',     'Apply a style preset' },
+        { '--color='..colspec, 'COLSPEC',   'Base scheme and/or custom colors' },
+        { '--black',                        'Use black background' },
+        { '--no-color',                     'Disable colors' },
+        { '--no-bold',                      'Do not use bold text' },
+        { '--no-unicode',                   'Use ASCII characters instead of Unicode drawing characters' },
+
+        -- DISPLAY MODE
         { '--height='..heights, 'HEIGHT[%]', 'Display fzf window below the cursor with the given height instead of using fullscreen' },
         { '--min-height='..minheight, 'HEIGHT', 'Minimum height when --height is given in percent (default: 10)' },
+        { hide=true, '--tmux='..clink.argmatcher():addarg(), 'OPTS', '' },
+
+        -- LAYOUT
         { '--layout='..layout, 'LAYOUT',    'Choose layout' },
         { '--reverse',                      'A synonym for --layout=reverse' },
+        { '--margin='..margin, 'MARGIN',    'Screen margin (TRBL | TB,RL | T,RL,B | T,R,B,L)' },
+        { '--padding='..padding, 'PADDING', 'Padding inside border (TRBL | TB,RL | T,RL,B | T,R,B,L)' },
         { '--border',                       'Draw border around the finder (default: rounded)' },
         { '--border='..borderstyle, 'STYLE', 'Draw border around the finder (default: rounded)', opteq=false },
         { '--border-label='..borderlabel, 'LABEL', 'Label to print on the border' },
         { '--border-label-pos='..borderlabelpos, 'N[:top|bottom]', 'Position of border label' },
-        { '--no-unicode',                   'Use ASCII characters instead of Unicode drawing characters' },
-        { '--margin='..margin, 'MARGIN',    'Screen margin (TRBL | TB,RL | T,RL,B | T,R,B,L)' },
-        { '--padding='..padding, 'PADDING', 'Padding inside border (TRBL | TB,RL | T,RL,B | T,R,B,L)' },
-        { '--info='..infostyle, 'STYLE',    'Finder info style' },
-        { '--no-info',                      'Hide the finder info (synonym for --info=hidden)' },
-        { '--separator='..separatorstr, 'STR', 'Hide info line separator' },
-        { '--no-separator',                 'Hide info line separator' },
+
+        -- LIST SECTION
+        { '-m',                             'Enable multi-select with tab/shift-tab' },
+        { '--multi',                        'Enable multi-select with tab/shift-tab' },
+        { '--multi='..multimax, 'MAX',      'Enable multi-select with tab/shift-tab', opteq=false },
+        { '--highlight-line',               'Highlight the whole current line' },
+        { '--cycle',                        'Enable cyclic scroll' },
+        { '--wrap',                         'Enable line wrap' },
+        { '--wrap-sign='..wrapsign, 'STR',  'Indicator for wrapped lines' },
+        { '--no-multi-line',                'Disable multi-line display of items when using --read0' },
+        { '--raw',                          'Enable raw mode (show non-matching items)' },
+        { '--track',                        'Track the current selection when the result is updated' },
+        { '--tac',                          'Reverse the order of the input' },
+        { '--gap',                          'Render empty line between each item' },
+        { '--gap='..numgap, 'N',            'Render N empty lines between each item', opteq=false },
+        { '--gap-line',                     'Draw horizontal line on each gap' },
+        { '--gap-line=',                     'Draw horizontal line on each gap' },
+        { '--freeze-left='..freezeleft, 'N', 'Number of fields to freeze on the left' },
+        { '--freeze-right='..freezeright, 'N', 'Number of fields to freeze on the right' },
+        { '--keep-right',                   'Keep the right end of the line visible on overflow' },
+        { '--scroll-off='..scrolloff, 'LINES', 'Number of screen lines to keep above or below when scrolling to the top or to the bottom (default: 0)' },
+        { '--no-hscroll',                   'Disable horizontal scroll' },
+        { '--hscroll-off='..hscrolloff, 'COLS', 'Number of screen columns to keep to the right of the highlighted substring (default: 10)' },
+        { '--jump-labels='..jumplabels, 'CHARS', 'Label characters for jump and jump-accept' },
+        { '--gutter='..gutterchar, 'CHAR',  'Character used in the gutter column' },
+        { '--gutter-raw='..gutterrawchar, 'CHAR',  'Character used in the gutter column in raw mode' },
+        { '--pointer='..pointer, 'STR',     'Pointer to the current line (default: \'>\')' },
+        { '--marker='..marker, 'STR',       'Multi-select marker (default: \'>\')' },
+        { '--marker-multi-line='..multilinemarker, 'STR', 'Multi-select marker for multi-line entries (3 elements for top, middle, and bottom)' },
+        { '--ellipsis='..ellipsis, 'STR',   'Ellipsis to show when line is truncated (default: \'..\')' },
+        { '--tabstop='..tabstop, 'SPACES',  'Number of spaces for a tab character (default: 8)' },
         { '--scrollbar',                    'Show scrollbar' },
         { '--scrollbar='..scrollbarchars, 'C1[C2]', 'Scrollbar character for main [and preview] window', opteq=false },
         { '--no-scrollbar',                 'Hide scrollbar' },
-        { '--prompt='..prompt, 'STR',       "Input prompt (default: '> ')" },
-        { '--pointer='..pointer, 'STR',     "Pointer to the current line (default: '>')" },
-        { '--marker='..marker, 'STR',       "Multi-select marker (default: '>')" },
-        { '--header='..header, 'STR',       "String to print as header" },
-        { '--header-lines='..headerlines, 'N', 'The first N lines of the input are treated as header' },
-        { '--header-first',                 'Print header before the prompt line' },
-        { '--ellipsis='..ellipsis, 'STR',   "Ellipsis to show when line is truncated (default: '..')" },
+        { '--list-border',                  'Draw border around the list section' },
+        { '--list-border='..borderstyle, 'STYLE', 'Draw border around the list section', opteq=false },
+        { '--list-label='..listlabel, 'LABEL', 'Label to print on the list border' },
+        { '--list-label-pos='..listlabelpos, 'N[:top|bottom]', 'Position of the list label' },
 
-        -- Display options
-        { '--ansi',                         'Enable processing of ANSI color codes' },
-        { '--tabstop='..tabstop, 'SPACES',  'Number of spaces for a tab character (default: 8)' },
-        { '--color='..colspec, 'COLSPEC',   'Base scheme and/or custom colors' },
-        { '--no-bold',                      'Do not use bold text' },
-        { '--black',                        'Use black background' },
+        -- INPUT SECTION
+        { '--no-input',                     'Disable and hide the input section' },
+        { '--no-mouse',                     'Disable mouse' },
+        { '--prompt='..prompt, 'STR',       'Input prompt (default: \'> \')' },
+        { '--info='..infostyle, 'STYLE',    'Finder info style' },
+        { '--no-info',                      'Hide the finder info (synonym for --info=hidden)' },
+        { '--info-command='..infocommand, 'COMMAND', 'Command to generate info line' },
+        { '--separator='..separatorstr, 'STR', 'Hide info line separator' },
+        { '--no-separator',                 'Hide info line separator' },
+        { '--ghost='..ghosttext, 'TEXT',    'Ghost text to display when the input is empty' },
+        { '--filepath-word',                'Make word-wise movements respect path separators' },
+        { '--input-border',                 'Draw border around the input section' },
+        { '--input-border='..borderstyle, 'STYLE', 'Draw border around the input section', opteq=false },
+        { '--input-label='..inputlabel, 'LABEL', 'Label to print on the input border' },
+        { '--input-label-pos='..inputlabelpos, 'N[:top|bottom]', 'Position of label on the input border' },
 
-        -- History options
-        { '--history=', 'FILE',             'History file' },
-        { '--history-size='..historysize, 'N', 'Maximum number of history entries (default: 1000)' },
-
-        -- Preview options
+        -- PREVIEW WINDOW
         { '--preview='..previewcommand, 'COMMAND', 'Command to preview highlighted line ({})' },
+        { '--preview-window='..previewopt, 'OPTS', 'Preview window layout (default: right,50%)' },
+        { '--preview-border',               'Draw border around the preview window' },
+        { '--preview-border='..borderstyle, 'STYLE', 'Draw border around the preview window', opteq=false },
         { '--preview-label='..previewlabel, 'LABEL', 'Label to print on preview window border' },
         { '--preview-label-pos='..previewlabelpos, 'N[:top|bottom]', 'Position of label on preview window border' },
-        { '--preview-window='..previewopt, 'OPTS', 'Preview window layout (default: right,50%)' },
 
-        -- Scripting options
+        -- HEADER
+        { '--header='..header, 'STR',       'String to print as header' },
+        { '--header-lines='..headerlines, 'N', 'The first N lines of the input are treated as header' },
+        { '--header-first',                 'Print header before the prompt line' },
+        { '--header-border',                'Draw border around the header section' },
+        { '--header-border='..borderstyle, 'STYLE', 'Draw border around the header section', opteq=false },
+        { '--header-lines-border',          'Display header from --header-lines with a separate border' },
+        { '--header-lines-border='..borderstyle, 'STYLE', 'Display header from --header-lines with a separate border', opteq=false },
+        { '--header-label='..headerlabel, 'LABEL', 'Label to print on the header border' },
+        { '--header-label-pos='..headerlabelpos, 'N[:top|bottom]', 'Position of label on the header border' },
+
+        -- FOOTER
+        { '--footer='..footer, 'STR',       'String to print footer' },
+        { '--footer-border',                'Draw border around the footer section' },
+        { '--footer-border='..borderstyle, 'STYLE', 'Draw border around the footer section', opteq=false },
+        { '--footer-label='..footerlabel, 'LABEL', 'Label to print on the footer border' },
+        { '--footer-label-pos='..footerlabelpos, 'N[:top|bottom]', 'Position of label on the footer border' },
+
+        -- SCRIPTING
         { '-q'..query, ' STR',              'Start the finder with the given query' },
         { '--query='..query, 'STR',         'Start the finder with the given query' },
         { '-1',                             'Automatically select the only match' },
@@ -1346,12 +1452,36 @@ local function create_argmatcher()
         { '--print-query',                  'Print query as the first line' },
         { '--expect='..expect, 'KEYS',      'Comma-separated list of keys to complete fzf' },
         { '--no-expect',                    'Clear list of keys to complete fzf' },
-        { '--read0',                        'Read input delimited by ASCII NUL characters' },
-        { '--print0',                       'Print output delimited by ASCII NUL characters' },
-        { '--sync',                         'Synchronous search for multi-staged filtering' },
+
+        -- KEY/EVENT BINDING
+        { '--bind='..keybinds, 'KEYBINDS',  'Custom key bindings. Refer to the man page' },
+
+        -- ADVANCED
+        { hide=true, '--with-shell='..clink.argmatcher():addarg() },
+        { hide=true, '--listen='..clink.argmatcher():addarg() },
+
+        -- DIRECTORY TRAVERSAL
+        { '--walker='..walkeropts, 'OPTS',  'Options for directory traversal when FZF_DEFAULT_COMMAND is not set' },
+        { '--walker-root='..walkerroot, 'DIR [...]', 'List of directories to walk (default: .)' },
+        { '--walker-skip='..walkerskip, 'DIRS', 'Comma-separated list of directory names to skip' },
+
+        -- HISTORY
+        { '--history=', 'FILE',             'History file' },
+        { '--history-size='..historysize, 'N', 'Maximum number of history entries (default: 1000)' },
+
+        -- SHELL INTEGRATION
+        { hide=true, '--bash' },
+        { hide=true, '--zsh' },
+        { hide=true, '--fish' },
+
+        -- HELP
         { '--version',                      'Display version information and exit' },
         { '-h',                             'Display help text' },
         { '--help',                         'Display help text' },
+        --man
+
+        -- ...LEFTOVER...
+        { '--algo='..algos, 'TYPE',         'Fuzzy matching algorithm' },
     })
 end
 

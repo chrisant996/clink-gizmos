@@ -225,6 +225,7 @@ local function infer_placeholders(command, found_placeholders, line)
 
     -- 1. Modern IDEs & Cross-platform (VS Code, Zed, Sublime).
     if test("code") or
+            test("vscodium") or
             test("zed") then
         append_placeholder("--goto {file}")
         if not isnilorempty(line) then
@@ -334,6 +335,8 @@ end
 -- While loaded into Clink, this script invokes itself as a standalone Lua
 -- script to perform certain operations.
 
+local fromcmdline
+
 if standalone then
     if arg[1] == "--tqf" or arg[1] == "--tqr" then
         -- Transform query between ripgrep mode and fzf mode.
@@ -357,13 +360,24 @@ if standalone then
                 r:close()
             end
         end
+        return
     elseif arg[1] == "--edit" then
         -- Launch an editor with the file.
         edit_file(nil, arg[3], arg[2])
+        return
+    elseif arg[1] == "--fromcmdline" then -- luacheck: ignore 542
+        -- Start fzf_ripgrep as an executable command, not a key binding.
+        fromcmdline = true
     else
         os.execute([[start "error invoking fzf_rg.lua" cmd /c echo Unrecognized usage.^&pause]])
+        return
     end
-    return
+
+    if not CLINK_EXE then
+        -- Prior to Clink v1.9.18 the CLINK_EXE variable was accidentally
+        -- missing when running as a standalone Lua interpreter.
+        CLINK_EXE = os.gethost()
+    end
 end
 
 --------------------------------------------------------------------------------
@@ -371,7 +385,7 @@ end
 
 -- luacheck: globals fzf_rg_loader_arbiter
 fzf_rg_loader_arbiter = fzf_rg_loader_arbiter or {}
-if fzf_rg_loader_arbiter.initialized then
+if not standalone and fzf_rg_loader_arbiter.initialized then
     local msg = 'fzf_rg.lua was already fully initialized'
     if fzf_rg_loader_arbiter.loaded_source then
         msg = msg..' ('..fzf_rg_loader_arbiter.loaded_source..')'
@@ -392,7 +406,7 @@ local cached_preview_has_bat
 local has_rg
 
 local function describe_commands()
-    if describemacro_list then
+    if not standalone and describemacro_list then
         for _, d in ipairs(describemacro_list) do
             rl.describemacro(d.macro, d.desc)
         end
@@ -401,7 +415,7 @@ local function describe_commands()
 end
 
 local function add_help_desc(macro, desc)
-    if rl.describemacro and describemacro_list then
+    if not standalone and rl.describemacro and describemacro_list then
         table.insert(describemacro_list, { macro=macro, desc=desc })
     end
 end
@@ -675,8 +689,10 @@ local function get_preview_config()
 end
 
 local function get_header_text()
+    local editor = get_editor_nickname()
+    local insert = (standalone and "" or "  ALT-I (insert)")
     local header =
-    "ENTER or ALT-E (edit via "..get_editor_nickname()..")  ALT-I (insert)  CTRL-/ or \\\\ (toggle preview)\n"..
+    "ENTER or ALT-E (edit via "..editor..")"..insert.."  CTRL-/ or \\\\ (toggle preview)\n"..
     "CTRL-R (ripgrep mode)  CTRL-F (fzf mode)  CTRL-U (clear query)"
     return header
 end
@@ -803,10 +819,12 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
     local action = (key == "alt-i") and "insert-cursor" or "edit"
     if action == "edit" then
         -- Discard what the user might have started with.
-        rl.invokecommand("clink-reset-line")
+        if not standalone then
+            rl.invokecommand("clink-reset-line")
+        end
         -- Open the file in an editor.
         edit_file(rl_buffer, file, line)
-    elseif action:find("^insert%-") then
+    elseif not standalone and action:find("^insert%-") then
         rl_buffer:beginundogroup()
         if action == "insert-cursor" then -- luacheck: ignore 542
         elseif action == "insert-word" then
@@ -832,6 +850,25 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
         rl_buffer:ding()
         return
     end
+end
+
+--------------------------------------------------------------------------------
+-- Starting as an executable command simulates starting as a key binding.
+
+if fromcmdline then
+    local rl_buffer = {
+        ding = function() end,
+        beginoutput = function() end,
+        refreshline = function() end,
+        getbuffer = function() return "" end,
+        beginundogroup = function() end,
+        endundogroup = function() end,
+        insert = function() assert(false) end,
+        remove = function() assert(false) end,
+    }
+
+    fzf_ripgrep(rl_buffer, nil)
+    return
 end
 
 --------------------------------------------------------------------------------
