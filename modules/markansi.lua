@@ -459,12 +459,16 @@ local function mark(text, codes)
                 end
             end
 
-            concat(c)
+            if c then
+                concat(c)
+            end
         end
 
-        -- NOTE:  This used to contain ".", but that didn't allow "`a`..`z`".
-        startable = not c:find("^[A-Za-z0-9]$")
-        space = (c == " ")
+        if c then
+            -- NOTE:  This used to contain ".", but that didn't allow "`a`..`z`".
+            startable = not c:find("^[A-Za-z0-9]$")
+            space = (c == " ")
+        end
     end
 
     if mode["#"] then
