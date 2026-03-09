@@ -33,7 +33,7 @@
 -- TODO: -e arg : `complete -c command -e cmpltn` erases completion "cmpltn" from "command".
 -- TODO: -w arg : `complete -c hub -w git` makes "hub" inherit the current state of "git" command completions.
 
-local standalone = clink and not clink.argmatcher and not clink.arg and true
+local standalone = clink and not clink.argmatcher and not clink.arg and {}
 
 if not standalone then
 
@@ -59,6 +59,27 @@ end
 end -- not standalone
 
 -- luacheck: globals NONL
+
+--------------------------------------------------------------------------------
+if standalone then
+    for _, name in ipairs(arg) do
+        if not standalone.noflags and name:find('^%-%-') then
+            if name == '--' then
+                standalone.noflags = true
+            elseif name:lower() == '--permissive' then
+                standalone.permissive = true
+            else
+                error('Unrecognized flag \''..name..'\'.')
+            end
+        elseif not standalone.infile then
+            standalone.infile = name
+        elseif not standalone.outfile then
+            standalone.outfile = name
+        else
+            error('Too many arguments.')
+        end
+    end
+end
 
 --------------------------------------------------------------------------------
 -- Options helpers.
@@ -200,7 +221,7 @@ local _condition = {
                     state.condition_contains_opt = conditions
                 end
             end
-        else
+        elseif not standalone or not standalone.permissive then
             state.failures = state.failures or {}
             table.insert(state.failures, 'unrecognized condition "'..arg..'"')
         end
@@ -380,6 +401,7 @@ local function parse_fish_completions(name, fish)
         i = i + 1
         if line:match(match_complete) then
             state = {
+                permissive=(standalone and arg["--permissive"] and true or nil),
                 command=name,
                 flags={},
                 matches={},
@@ -463,6 +485,49 @@ local function parse_fish_completions(name, fish)
     return commands, failures
 end
 
+local str_functions = [[
+local function onarg_contains_opt(arg_index, word, word_index, line_state, user_data)
+    if arg_index == 0 then
+        local present = user_data.present
+        if not present then
+            present = {}
+            user_data.present = present
+        end
+        present[word] = true
+    end
+end
+
+local function do_filter(matches, conditions, user_data)
+    local ret = {}
+    local present = user_data.present or {}
+    for _,m in ipairs(matches) do
+        local test_list = conditions[m.match]
+        if test_list then
+            local ok
+            for _,test in ipairs(test_list) do
+                if present[test] then
+                    ok = true
+                    break
+                end
+            end
+            if not ok then
+                goto continue
+            end
+        end
+        table.insert(ret, m)
+::continue::
+    end
+    return ret
+end
+]]
+
+local str_function_table = [[
+return {
+    onarg_contains_opt=onarg_contains_opt,
+    do_filter=do_filter,
+}
+]]
+
 if standalone then
     require('modules/dumpvar')
 
@@ -498,8 +563,8 @@ if standalone then
         local green = '\x1b[92m'
         local norm = '\x1b[m'
 
-        local infile = arg[1]
-        local outfile = arg[2]
+        local infile = standalone.infile
+        local outfile = standalone.outfile
 
         if not infile then
             clink.print(red..'Missing input file.'..norm)
@@ -547,42 +612,7 @@ if standalone then
 
             if c.conditions and first_conditions then
                 first_conditions = nil
-                -- IMPORTANT: Keep in sync with onarg_contains_opt().
-                o:write('local function onarg_contains_opt(arg_index, word, _, _, user_data)\n')
-                o:write('  if arg_index == 0 then\n')
-                o:write('    local present = user_data.present\n')
-                o:write('    if not present then\n')
-                o:write('      present = {}\n')
-                o:write('      user_data.present = present\n')
-                o:write('    end\n')
-                o:write('    present[word] = true\n')
-                o:write('  end\n')
-                o:write('end\n')
-                o:write('\n')
-                -- IMPORTANT: Keep in sync with do_filter().
-                o:write('local function do_filter(matches, conditions, user_data)\n')
-                o:write('  local ret = {}\n')
-                o:write('  local present = user_data.present or {}\n')
-                o:write('  for _,m in ipairs(matches) do\n')
-                o:write('    local test_list = conditions[m.match]\n')
-                o:write('    if test_list then\n')
-                o:write('      local ok\n')
-                o:write('      for _,test in ipairs(test_list) do\n')
-                o:write('        if present[test] then\n')
-                o:write('          ok = true\n')
-                o:write('          break\n')
-                o:write('        end\n')
-                o:write('      end\n')
-                o:write('      if not ok then\n')
-                o:write('        goto continue\n')
-                o:write('      end\n')
-                o:write('    end\n')
-                o:write('    table.insert(ret, m)\n')
-                o:write('::continue::\n')
-                o:write('  end\n')
-                o:write('  return ret\n')
-                o:write('end\n')
-                o:write('\n')
+                o:write(str_functions:gsub('^%s+', ''))
             end
 
             -- Make linked argmatchers.
@@ -604,7 +634,7 @@ if standalone then
                         o:write(':adddescriptions({\n')
                         for _,arg in ipairs(l) do
                             if arg.desc and arg.desc ~= '' then
-                                o:write('  ["'..escape_string(arg.match)..'"] = "'..escape_string(arg.desc)..'",\n')
+                                o:write('    ["'..escape_string(arg.match)..'"] = "'..escape_string(arg.desc)..'",\n')
                             end
                         end
                         o:write('})')
@@ -618,7 +648,7 @@ if standalone then
             if c.conditions then
                 o:write('local '..cname..'__hide_unless = {\n')
                 for k,values in spairs(c.conditions) do
-                    o:write('  ["'..k..'"] = { ')
+                    o:write('    ["'..k..'"] = { ')
                     for i,value in ipairs(values) do
                         if i > 1 then
                             o:write(', ')
@@ -636,7 +666,7 @@ if standalone then
             if c.descs then
                 o:write(':adddescriptions({\n')
                 for f,d in spairs(c.descs) do
-                    o:write('  ["'..f..'"] = { "'..escape_string(d[1])..'"')
+                    o:write('    ["'..f..'"] = { "'..escape_string(d[1])..'"')
                     if d[2] then
                         o:write(', "'..escape_string(d[2])..'"')
                     end
@@ -655,8 +685,8 @@ if standalone then
                     o:write(',\n')
                 end
                 if c.conditions then
-                    o:write('  onarg = onarg_contains_opt,\n')
-                    o:write('  function(_, _, _, _, user_data) clink.onfiltermatches(function(matches) return do_filter(matches, '..cname..'__hide_unless, user_data) end) end,\n') -- luacheck: no max line length
+                    o:write('    onarg = onarg_contains_opt,\n')
+                    o:write('    function(_, _, _, _, user_data) clink.onfiltermatches(function(matches) return do_filter(matches, '..cname..'__hide_unless, user_data) end) end,\n') -- luacheck: no max line length
                 end
                 o:write('})\n')
             end
@@ -671,48 +701,15 @@ if standalone then
             end
             os.exit(1)
         else
-            clink.print(green..'Successful conversion.'..norm)
+            clink.print(green..'Successful conversion to '..outfile..'.'..norm)
         end
     end
 
     return convert()
 end
 
--- IMPORTANT: Keep in sync with convert().
-local function onarg_contains_opt(arg_index, word, word_index, line_state, user_data) -- luacheck: no unused
-    if arg_index == 0 then
-        local present = user_data.present
-        if not present then
-            present = {}
-            user_data.present = present
-        end
-        present[word] = true
-    end
-end
-
--- IMPORTANT: Keep in sync with convert().
-local function do_filter(matches, conditions, user_data)
-    local ret = {}
-    local present = user_data.present or {}
-    for _,m in ipairs(matches) do
-        local test_list = conditions[m.match]
-        if test_list then
-            local ok
-            for _,test in ipairs(test_list) do
-                if present[test] then
-                    ok = true
-                    break
-                end
-            end
-            if not ok then
-                goto continue
-            end
-        end
-        table.insert(ret, m)
-::continue::
-    end
-    return ret
-end
+local chunk = load(str_functions..str_function_table)
+local func_tbl = chunk()
 
 local function generate_completions(commands)
     -- For each command.
@@ -742,10 +739,10 @@ local function generate_completions(commands)
         end
         if c.conditions then
             local conditions = c.conditions
-            flags.onarg = onarg_contains_opt
+            flags.onarg = func_tbl.onarg_contains_opt
             table.insert(flags, function (word, word_index, line_state, match_builder, user_data) -- luacheck: no unused
                 clink.onfiltermatches(function (matches)
-                    return do_filter(matches, conditions, user_data)
+                    return func_tbl.do_filter(matches, conditions, user_data)
                 end)
             end)
         end
