@@ -78,6 +78,18 @@
 --      fzf_git.default_bindings    Controls whether to apply default
 --                                  bindings.  This is true by default.
 --
+--      fzf_git.height              Height to use for the fzf --height flag.
+--                                  (See fzf documentation on --height.)
+--
+--      fzf.exe_location            Specifies the location of fzf.exe if not in
+--                                  the system PATH.  This isn't just a
+--                                  directory name, it's the full path name of
+--                                  the exe file.
+--                                  For example, c:\tools\fzf.exe or etc.
+--
+--                              NOTE:  the fzf.exe_location setting is shared by
+--                              multiple fzf scripts.
+--
 --
 -- ENVIRONMENT VARIABLES:
 --
@@ -149,20 +161,27 @@ end
 -- of the script that can't fully support the goal of "newest version wins".
 
 local function maybe_add(name, ...)
-    if settings.get(name) == nil then
+    if type(name) == "string" and settings.get(name) == nil then
         settings.add(name, ...)
     end
 end
 
-if rl.setbinding then
-    maybe_add(
-        'fzf_git.default_bindings',
-        true,
-        'Use default key bindings for fzf_git integration',
-        'Set this to false if it interferes with your existing key bindings, and\n'..
-        'you can add bindings manually to your .inputrc file.\n\n'..
-        'Changing this takes effect for the next Clink session.')
-end
+-- fzf.exe_location is in common with fzf.lua.
+maybe_add("fzf.exe_location", "",
+          "Location of fzf.exe if not on the PATH",
+[[This isn't just a directory name, it's the full path name of the exe file.
+For example, c:\tools\fzf.exe or etc.]])
+
+maybe_add("fzf_git.height", "50%",
+          "Height to use for the --height flag"
+[[See fzf documentation on --height for possible values.]])
+
+maybe_add(rl.setbinding and "fzf_git.default_bindings", true,
+          "Use default key bindings for fzf_git integration",
+[[Set this to false if it interferes with your existing key bindings, and
+you can add bindings manually to your .inputrc file.
+
+Changing this takes effect for the next Clink session.]])
 
 --------------------------------------------------------------------------------
 -- REVIEW:  what does the $(__fzf_git_pager) usage accomplish in fzf-git.sh?
@@ -311,29 +330,50 @@ local function add_help_desc(macro, desc)
     end
 end
 
+local function get_fzf()
+    local command = settings.get("fzf.exe_location")
+    if not command or command == "" then
+        command = "fzf.exe"
+    end
+    command = command:gsub('"', "")
+
+    -- It's important to invoke an .exe file, otherwise quoting for --query can
+    -- malfunction and potentially fall into a code injection situation.
+    if path.getname(command) ~= command then
+        local command_path = path.toparent(command)
+        command = path.join(command_path, path.getbasename(command)..".exe")
+    else
+        command = path.getbasename(command)..".exe"
+    end
+
+    command = '"'..command..'"'
+    return command
+end
+
 local function _fzf_git_fzf(args)
     -- The fzf command path.
-    local command = settings.get('fzf.exe_location')
-    if not command or command == '' then
-        command = 'fzf.exe'
+    local command = get_fzf()
+
+    local height = settings.get('fzf_git.height') or ''
+    if height ~= '' then
+        height = '--height '..height
     end
-    command = command:gsub('"', '')
-    command = '"'..command..'"'
 
     -- The fzf_git options for fzf.
     -- luacheck: globals __fzf_git_fzf
     local opts
     local def_colors = os.getenv("FZF_GIT_DEFAULT_COLORS") or "label:blue"
-    local def_opts =
-        '--height 50% --tmux 90%,70% '..
-        '--layout reverse --multi --min-height 20+ --border rounded '..
-        '--no-separator --header-border horizontal '..
-        '--border-label-pos 2 '..
-        '--color "'..def_colors..'" '..
-        '--preview-window "right,50%" --preview-border line '..
-        '--bind "ctrl-/:change-preview-window(down,50%|hidden|)" '..
-        '--bind "shift-down:preview-down+preview-down,shift-up:preview-up+preview-up,preview-scroll-up:preview-up+preview-up,preview-scroll-down:preview-down+preview-down" '..
-        ''
+    local def_opts = table.concat({
+        height,
+        '--tmux 90%,70%',
+        '--layout reverse --multi --min-height 20+ --border rounded',
+        '--no-separator --header-border horizontal',
+        '--border-label-pos 2',
+        '--color "'..def_colors..'"',
+        '--preview-window "right,50%" --preview-border line',
+        '--bind "ctrl-/:change-preview-window(down,50%|hidden|)"',
+        '--bind "shift-down:preview-down+preview-down,shift-up:preview-up+preview-up,preview-scroll-up:preview-up+preview-up,preview-scroll-down:preview-down+preview-down"',
+    }, ' ')
     if type(__fzf_git_fzf) == "function" then
         opts = __fzf_git_fzf(def_opts)
     elseif type(__fzf_git_fzf) == "string" then

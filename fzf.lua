@@ -49,6 +49,9 @@
 --                              it's the full path name of the exe file.
 --                              For example, c:\tools\fzf.exe or etc.
 --
+--                          NOTE:  the fzf.exe_location setting is shared by
+--                          multiple fzf scripts.
+--
 --      fzf.allow_unsafe_query  Allows the fzf.exe_location setting to specify a
 --                              file that doesn't end in ".exe".  In that case,
 --                              it tries to still provide strong security
@@ -63,8 +66,8 @@
 --                              Uses the color.description setting, and adds
 --                              the --ansi flag when invoking fzf.
 --
---      fzf.height              Height to use for the fzf --height flag.  See
---                              fzf documentation on --height for values.
+--      fzf.height              Height to use for the fzf --height flag.  (See
+--                              fzf documentation on --height.)
 --
 --
 -- Optional:  You can set the following environment variables to customize the
@@ -150,39 +153,42 @@ end
 -- of the script that can't fully support the goal of "newest version wins".
 
 local function maybe_add(name, ...)
-    if settings.get(name) == nil then
+    if type(name) == "string" and settings.get(name) == nil then
         settings.add(name, ...)
     end
 end
 
-maybe_add('fzf.height', '40%', 'Height to use for the --height flag')
-maybe_add('fzf.exe_location', '', 'Location of fzf.exe if not on the PATH',
-          "This isn't just a directory name, it's the full path name of the\n"..
-          "exe file.  For example, c:\\tools\\fzf.exe or etc.")
-maybe_add('fzf.allow_unsafe_query', false, 'Allow fzf.exe_location to not be an EXE file',
-          "Allows the fzf.exe_location setting to not end in \".exe\".  In that\n"..
-          "case, it tries to still provide strong security protections by stripping\n"..
-          "unsafe characters from the input line before sending them to the non-exe\n"..
-          "fzf program.")
+maybe_add('fzf.height', '40%',
+          'Height to use for the --height flag',
+[[See fzf documentation on --height for possible values.]])
 
-if console.cellcount and console.plaintext then
-    maybe_add('fzf.show_descriptions', true, 'Show match descriptions when available',
-              'When enabled, fzf also searches in the match description text.')
-    maybe_add('fzf.color_descriptions', false, 'Apply color to match descriptions when shown',
-              'Uses the color defined in the color.description setting, and adds\n'..
-              'the --ansi flag when invoking fzf.')
-end
+maybe_add('fzf.exe_location', '',
+          'Location of fzf.exe if not on the PATH',
+[[This isn't just a directory name, it's the full path name of the exe file.
+For example, c:\tools\fzf.exe or etc.]])
 
-if rl.setbinding then
-    maybe_add(
-        'fzf.default_bindings',
-        false,
-        'Use default key bindings',
-        'To avoid interference with your existing key bindings, key bindings for\n'..
-        'fzf are initially not enabled.  Set this to true to enable the default\n'..
-        'key bindings for fzf, or add bindings manually to your .inputrc file.\n\n'..
-        'Changing this takes effect for the next Clink session.')
-end
+maybe_add('fzf.allow_unsafe_query', false,
+          'Allow fzf.exe_location to not be an EXE file',
+[[Allows the fzf.exe_location setting to not end in ".exe".  In that case,
+it tries to still provide strong security protections by stripping unsafe
+characters from the input line before sending them to the non-exe fzf program.]])
+
+local has_console_apis = console.cellcount and console.plaintext
+maybe_add(has_console_apis and 'fzf.show_descriptions', true,
+          'Show match descriptions when available',
+[[When enabled, fzf also searches in the match description text.]])
+maybe_add(has_console_apis and 'fzf.color_descriptions', false,
+          'Apply color to match descriptions when shown',
+[[Uses the color defined in the color.description setting, and adds
+the --ansi flag when invoking fzf.]])
+
+maybe_add(rl.setbinding and 'fzf.default_bindings', false,
+          'Use default key bindings',
+[[To avoid interference with your existing key bindings, key bindings for
+fzf are initially not enabled.  Set this to true to enable the default key
+bindings for fzf, or add bindings manually to your .inputrc file.
+
+Changing this takes effect for the next Clink session.]])
 
 --------------------------------------------------------------------------------
 -- Helpers.
@@ -421,6 +427,8 @@ local function get_fzf(mode, addl_options)
         options = join_str('--reverse --scheme=path', options)
         options = join_str(options, os.getenv('FZF_CTRL_T_OPTS'))
     elseif mode == 'history' then
+        local header = "DEL (delete history entry)  CTRL-R (toggle sort mode)"
+        options = join_str('--header "'..header..'" --header-border line', options)
         options = join_str('--scheme=history --bind=ctrl-r:toggle-sort', options)
         options = join_str(options, os.getenv('FZF_CTRL_R_OPTS'))
         options = join_str(options, '+m')
