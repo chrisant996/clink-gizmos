@@ -173,7 +173,7 @@ maybe_add("fzf.exe_location", "",
 For example, c:\tools\fzf.exe or etc.]])
 
 maybe_add("fzf_git.height", "50%",
-          "Height to use for the --height flag"
+          "Height to use for the --height flag",
 [[See fzf documentation on --height for possible values.]])
 
 maybe_add(rl.setbinding and "fzf_git.default_bindings", true,
