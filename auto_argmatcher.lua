@@ -78,6 +78,9 @@ if not clink.oncommand or not clink.getargmatcher then
 end
 
 local help_parser = require('help_parser')
+if not help_parser then
+    return
+end
 
 --------------------------------------------------------------------------------
 local _config = {}

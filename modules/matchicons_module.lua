@@ -113,8 +113,9 @@
 --------------------------------------------------------------------------------
 
 if not clink.ondisplaymatches then
-    log.info("matchicons_module.lua requires a newer version of Clink; please upgrade.")
-    return
+    local report = log and log.info or print
+    report("The matchicons_module.lua module requires a newer version of Clink; please upgrade.")
+    return false
 end
 
 settings.add("matchicons.enable", false,

@@ -172,7 +172,7 @@ local function overlay_alias(name, alias)
                alias = "web_search "..name.." $*"
             end
         end
-        if alias then
+        if alias and os.setalias then
             os.setalias(name, alias)
         end
     end

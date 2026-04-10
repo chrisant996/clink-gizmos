@@ -1,8 +1,9 @@
 -- luacheck: no max line length
 
 if type(git) ~= "table" or type(git.getstatus) ~= "function" then
-    log.info("scmapi_module.lua requires a newer version of Clink; please upgrade.")
-    return
+    local report = log and log.info or print
+    report("The scmapi_module.lua module requires a newer version of Clink; please upgrade.")
+    return false
 end
 
 --------------------------------------------------------------------------------
