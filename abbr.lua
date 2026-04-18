@@ -288,9 +288,19 @@ end
 -- Default key bindings.
 
 if rl.getbinding then
-    if rl.getbinding([[" "]]) == "self-insert" then
-        rl.setbinding([[" "]], [["luafunc:abbr_space"]])
+    -- Only bind Space if at least one abbreviation is defined.  Binding the
+    -- Space key has a side effect of slowing down pasting via the terminal's
+    -- paste command by defeating the typeahead optimization for self-insert
+    -- keys, so avoid degrading performance unless there's at least something
+    -- for the command to do.
+    init()
+    for _, _ in pairs(abbr_list) do -- luacheck: ignore 512
+        if rl.getbinding([[" "]]) == "self-insert" then
+            rl.setbinding([[" "]], [["luafunc:abbr_space"]])
+        end
+        break
     end
+
     if not rl.getbinding([["\C-X "]]) then
         rl.setbinding([["\C-X "]], [["luafunc:abbr_expand"]])
     end
