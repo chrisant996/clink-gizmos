@@ -294,11 +294,13 @@ if rl.getbinding then
     -- keys, so avoid degrading performance unless there's at least something
     -- for the command to do.
     init()
-    for _, _ in pairs(abbr_list) do -- luacheck: ignore 512
-        if rl.getbinding([[" "]]) == "self-insert" then
-            rl.setbinding([[" "]], [["luafunc:abbr_space"]])
+    if abbr_list then
+        for _, _ in pairs(abbr_list) do -- luacheck: ignore 512
+            if rl.getbinding([[" "]]) == "self-insert" then
+                rl.setbinding([[" "]], [["luafunc:abbr_space"]])
+            end
+            break
         end
-        break
     end
 
     if not rl.getbinding([["\C-X "]]) then
