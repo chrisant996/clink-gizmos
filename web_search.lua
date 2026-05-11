@@ -6,18 +6,21 @@
 --
 -- USAGE:
 --
---  You can use this either of these ways:
+--  You can use this any of these ways:
 --
 --      - Run "web_search <context> <term> [more terms...]"
+--      - Run "ws <context> <term> [more terms...]"
 --      - Run "<context> <term> [more terms...]"
 --
 --  For example, these do the same thing:
 --
 --      c:\> web_search google clink
+--      c:\> ws google clink
 --      c:\> google clink
 --
 --  Each search context has a doskey alias created for convenience, so that
 --  the Executable Completion feature of Clink can offer them as completions.
+--  Or turn off the doskey aliases via "clink set web_search.aliases false".
 --
 --  See further below for the list of available search contexts, or run
 --  "web_search --list" to print a list of available search contexts in the
@@ -112,12 +115,24 @@ if not clink.onfilterinput and not standalone then
     return
 end
 
-settings.add("web_search.enable", true, "Web search shortcuts",
-             "Adds aliases for web search shortcuts.  For example,\n"..
-             "type \"bing some words\" to use Bing to search for \"some words\".\n"..
-             "Type \"web_search --list\" to list the available search shortcuts.")
+local takes_effect_note = "\n\nChanging this setting doesn't take effect until the next Clink session."
 
-if not settings.get("web_search.enable") and not standalone then
+settings.add("web_search.enable", true, "Web search shortcuts",
+             "Enter \"web_search\" and a shortcut name to search using the\n"..
+             "corresponding web service.  Type \"web_search --list\" to list the\n"..
+             "available search shortcuts.  Or use \"ws\" in place of \"web_search\".\n"..
+             "For example, type \"web_search bing some words\" to use Bing to search\n"..
+             "for \"some words\"."..
+             takes_effect_note)
+settings.add("web_search.aliases", true, "Doskey aliases for web search shortcuts",
+             "Adds doskey aliases for each of the web search shortcuts.\n"..
+             "For example, type \"bing some words\" to use Bing to search for\n"..
+             "\"some words\".  Type \"web_search --list\" to list the available\n"..
+             "search shortcuts; a matching doskey alias is added for each shortcut.\n"..
+             "(This setting has no effect when web_search.enable is false.)"..
+             takes_effect_note)
+
+if not standalone and not settings.get("web_search.enable") then
     return
 end
 
@@ -169,7 +184,7 @@ local function overlay_alias(name, alias)
         if not alias then
             local a = os.getalias(name)
             if not a or a:find("^web_search%s") then
-               alias = "web_search "..name.." $*"
+                alias = "web_search "..name.." $*"
             end
         end
         if alias and os.setalias then
@@ -179,16 +194,21 @@ local function overlay_alias(name, alias)
 end
 
 local context_names = {}
+local add_shortcut_aliases = settings.get("web_search.aliases")
 for n in pairs(contexts) do
     table.insert(context_names, n)
-    overlay_alias(n)
+    if add_shortcut_aliases then
+        overlay_alias(n)
+    end
 end
 
 if (clink.version_encoded or 0) < 10070015 then
     -- Work around a bug in clink.parseline() in Clink v1.7.14 and lower.
     overlay_alias("web_search", "web_search_workaround $*")
+    overlay_alias("ws", "web_search_workaround $*")
 else
     overlay_alias("web_search", "web_search $*")
+    overlay_alias("ws", "web_search $*")
 end
 
 --------------------------------------------------------------------------------
