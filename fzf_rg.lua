@@ -48,7 +48,7 @@
 --      CTRL-\          = Toggles the preview pane on the bottom.
 --
 --      CTRL-R          = Use ripgrep mode; list matches in files.
---      CTRL-G          = Use fzf mode; filter matches further.
+--      CTRL-F          = Use fzf mode; filter matches further.
 --
 --      CTRL-U          = Clear the query text.
 --
@@ -509,6 +509,16 @@ Usually an editor supports one of the following formats:
 
 If setting from the command line you may need to escape the " character as \".]])
 
+maybe_add("fzf_rg.ripgrep_key", "ctrl-r",
+          "Key binding to toggle ripgrep mode",
+[[The key to press in fzf to switch to ripgrep mode (default: ctrl-r).
+For fzf key binding syntax, see the fzf documentation.]])
+
+maybe_add("fzf_rg.fzf_key", "ctrl-f",
+          "Key binding to toggle fzf mode",
+[[The key to press in fzf to switch to fzf mode (default: ctrl-f).
+For fzf key binding syntax, see the fzf documentation.]])
+
 --------------------------------------------------------------------------------
 -- Helpers.
 
@@ -744,12 +754,14 @@ local function get_preview_config()
     return table.unpack(args)
 end
 
-local function get_header_text()
+local function get_header_text(ripgrep_key, fzf_key)
     local editor = get_editor_nickname()
     local insert = (standalone and "" or "  ALT-I (insert)")
+    local ripgrep_upper = ripgrep_key:upper()
+    local fzf_upper = fzf_key:upper()
     local header =
     "ENTER or ALT-E (edit via "..editor..")"..insert.."  CTRL-/ or \\\\ (toggle preview)\n"..
-    "CTRL-R (ripgrep mode)  CTRL-F (fzf mode)  CTRL-U (clear query)"
+    ripgrep_upper.." (ripgrep mode)  "..fzf_upper.." (fzf mode)  CTRL-U (clear query)"
     return header
 end
 
@@ -785,6 +797,10 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
         height = '--height '..height
     end
 
+    -- Get configured key bindings.
+    local ripgrep_key = settings.get("fzf_rg.ripgrep_key") or "ctrl-r"
+    local fzf_key = settings.get("fzf_rg.fzf_key") or "ctrl-f"
+
     -- If the line is empty, let ripgrep prompt for input inside fzf.
     -- Otherwise, use the current line as the initial ripgrep query.
     local reload_command = get_reload_command()
@@ -799,7 +815,7 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
         -- Delimiter for fields in lines.
         [[--delimiter :]],
         -- Borders.
-        [[--header "]]..get_header_text()..[["]],
+        [[--header "]]..get_header_text(ripgrep_key, fzf_key)..[["]],
         [[--header-border line]],
         -- %q adds safe quotes.
         string.format("--query %q", query),
@@ -807,11 +823,11 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
         [[--disabled]],                         -- Disable fzf filtering (ripgrep will filter).
         [[--prompt "🔎 ripgrep> "]],
         -- Mode changes (ripgrep/fzf).
-        [[--bind "ctrl-f:unbind(change,ctrl-f)+change-prompt(🔎 fzf> )+enable-search+rebind(ctrl-r)+transform-query(]]..tq_command("f")..[[)"]],
-        [[--bind "ctrl-r:unbind(ctrl-r)+change-prompt(🔎 ripgrep> )+disable-search+rebind(change,ctrl-f)+transform-query(]]..tq_command("r")..[[)+reload(]]..reload_command..[[)"]],
+        [[--bind "]]..fzf_key..[[:unbind(change,]]..fzf_key..[[)+change-prompt(🔎 fzf> )+enable-search+rebind(]]..ripgrep_key..[[)+transform-query(]]..tq_command("f")..[[)"]],
+        [[--bind "]]..ripgrep_key..[[:unbind(]]..ripgrep_key..[[)+change-prompt(🔎 ripgrep> )+disable-search+rebind(change,]]..fzf_key..[[)+transform-query(]]..tq_command("r")..[[)+reload(]]..reload_command..[[)"]],
         [[--color "hl:-1:underline:reverse,hl+:-1:underline:reverse"]],
         -- Query.
-        [[--bind "start:reload(]]..reload_command..[[)+unbind(ctrl-r)"]],
+        [[--bind "start:reload(]]..reload_command..[[)+unbind(]]..ripgrep_key..[[)"]],
         [[--bind "change:reload(]]..reload_command..[[)"]],
         -- Actions.
         [[--bind "alt-e:execute-silent(]]..edit_command()..[[)"]],
