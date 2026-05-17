@@ -73,14 +73,14 @@
 --      local am = clink.argmatcher()
 --      am:addarg(clink.filematches, my_matches_without_icons)
 --
--- `matchicons.noaddicon`To mark a match display string as already having an icon (i.e. to disable
+-- To mark a match display string as already having an icon (i.e. to disable
 -- backfill on a per-match basis), use this function:
 --
 --      local match = {
 --          match = "foo"
 --          description
 --      }
---      matchicons.noaddicon()
+--      matchicons.noaddicon(match.match)
 --
 -- Starting in the October 2025 version, the code has been moved to a Lua module
 -- so that it can be loaded early, before any other scripts try to use the
