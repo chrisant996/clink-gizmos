@@ -1041,7 +1041,6 @@ fzf_git_commit_hashes = function(rl_buffer, line_state) -- luacheck: no unused
     do_fzf_git(rl_buffer, line_state,
         nil,
         [[--ansi --no-sort --bind 'ctrl-s:toggle-sort,alt-r:toggle-raw' \
-        --nth 1,1 \
         --border-label '🍡 Hashes ' \
         --header-lines 2 \
         --bind 'start:reload:$helper load_hashes ]]..(specific_hash or "")..[[' \
