@@ -535,6 +535,23 @@ local function escape_quotes(s, how)
     return s:gsub('"', how)
 end
 
+local function chcp(cp)
+    local ret
+    if cp == 65001 then
+        local r = io.popen('2>nul chcp')
+        if r then
+            local line = r:read()
+            ret = line:match('%d+')
+            r:close()
+            cp = '65001'
+        end
+    end
+    if type(cp) == 'string' then
+        os.execute('>nul 2>nul chcp '..cp)
+    end
+    return ret
+end
+
 local function get_fzf()
     local command = settings.get("fzf.exe_location")
     if not command or command == "" then
@@ -845,10 +862,12 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
             save_var(old_vars, "FZF_RG_EDITOR", settings.get("fzf_rg.editor"))
         end
         local exe = get_fzf()
+        local orig_cp = chcp(65001)
         local handle = io.popen(exe)
         restore_vars(old_vars)
         if not handle then
             rl_buffer:ding()
+            chcp(orig_cp)
             return
         end
 
@@ -860,6 +879,7 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
             end
         end
         handle:close()
+        chcp(orig_cp)
     end
 
     -- Redraw the prompt and input line.
