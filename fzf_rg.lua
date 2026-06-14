@@ -52,6 +52,8 @@
 --
 --      CTRL-U          = Clear the query text.
 --
+--      F1              = Toggles showing the key binding info.
+--
 --
 -- EDITOR:
 --
@@ -766,7 +768,7 @@ local function get_header_text()
     local insert = (standalone and "" or "  ALT-I (insert)")
     local header =
     "ENTER or ALT-E (edit via "..editor..")"..insert.."  CTRL-/ or \\\\ (toggle preview)\n"..
-    "CTRL-R (ripgrep mode)  CTRL-F (fzf mode)  CTRL-U (clear query)"
+    "CTRL-R (ripgrep mode)  CTRL-F (fzf mode)  CTRL-U (clear query)  F1 (keys info)"
     return header
 end
 
@@ -818,6 +820,7 @@ function fzf_ripgrep(rl_buffer, line_state) -- luacheck: no unused
         -- Borders.
         [[--header "]]..get_header_text()..[["]],
         [[--header-border line]],
+        [[--bind "f1:toggle-header"]],
         -- %q adds safe quotes.
         string.format("--query %q", query),
         -- Initial mode (ripgrep).

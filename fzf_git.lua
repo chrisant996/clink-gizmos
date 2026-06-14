@@ -810,16 +810,16 @@ function fzf_git_files(rl_buffer, line_state)
                    :gsub("^.* -> ", "")     -- | sed 's/.* -> //'
     end
 
-    do_fzf_git(rl_buffer, line_state,
-        list_files,
-        [[-m --ansi --nth 2..,.. \
-        --border-label '📁 Files ' \
-        --header 'CTRL-O (open in browser) ╱ ALT-E (open in editor)' \
-        --bind "ctrl-o:execute-silent:$helper list_file {}" ]]..
-        bind_alt_e_edit_file..
+    local args = table.concat({
+        [[-m --ansi --nth 2..,..]],
+        [[--border-label '📁 Files ']],
+        [[--header 'CTRL-O (open in browser) ╱ ALT-E (open in editor)']],
+        [[--bind "ctrl-o:execute-silent:$helper list_file {}"]],
+        bind_alt_e_edit_file,
         [[--preview "$helper files {}"]],
-        post_process
-    )
+    }, " ")
+
+    do_fzf_git(rl_buffer, line_state, list_files, args, post_process)
 end
 
 -- luacheck: globals fzf_git_branches
@@ -861,29 +861,29 @@ function fzf_git_branches(rl_buffer, line_state)
 
     local input_command = [[bash "]]..__fzf_git_sh():gsub("\\", "/")..[[" --list branches]]
 
-    do_fzf_git(rl_buffer, line_state,
-        nil,
-        [[--ansi \
-        --border-label '🌲 Branches ' \
-        --header-lines 2 \
-        --tiebreak begin \
-        --preview-window down,border-top,40% \
-        --color hl:underline,hl+:underline \
-        --no-hscroll ]]..
-            -- IMPORTANT:  This 'reload' bind supplies the input without harming
-            -- the console mode.  Using GNU tools like bash and column result in
-            -- the ESC and Arrow keys not working until a letter is pressed.
-            -- But having fzf spawn the command works fine.
-        [[--bind "start:reload:]]..input_command:gsub("\"", "\\\"")..[[" ]]..
-        [[--bind 'ctrl-/:change-preview-window(down,70%|hidden|)' \
-        --bind "ctrl-o:execute-silent:bash \"$__fzf_git\" --list branch {}" \
-        --bind "alt-a:change-border-label(🌳 All branches)+reload:bash \"$__fzf_git\" --list all-branches" \
-        --bind "alt-h:accept" \
-        --bind "alt-enter:accept" \
-        --expect=alt-enter,alt-h \
-        --preview "$helper branches {}"]],
-        post_process
-    )
+    local args = table.concat({
+        [[--ansi]],
+        [[--border-label '🌲 Branches ']],
+        [[--header-lines 2]],
+        [[--tiebreak begin]],
+        [[--preview-window down,border-top,40%]],
+        [[--color hl:underline,hl+:underline]],
+        [[--no-hscroll]],
+        -- IMPORTANT:  This 'reload' bind supplies the input without harming
+        -- the console mode.  Using GNU tools like bash and column result in
+        -- the ESC and Arrow keys not working until a letter is pressed.
+        -- But having fzf spawn the command works fine.
+        [[--bind "start:reload:]]..input_command:gsub("\"", "\\\"")..[["]],
+        [[--bind 'ctrl-/:change-preview-window(down,70%|hidden|)']],
+        [[--bind "ctrl-o:execute-silent:bash \"$__fzf_git\" --list branch {}"]],
+        [[--bind "alt-a:change-border-label(🌳 All branches)+reload:bash \"$__fzf_git\" --list all-branches"]],
+        [[--bind "alt-h:accept"]],
+        [[--bind "alt-enter:accept"]],
+        [[--expect=alt-enter,alt-h]],
+        [[--preview "$helper branches {}"]],
+    }, " ")
+
+    do_fzf_git(rl_buffer, line_state, nil, args, post_process)
 
     if alt_h and hash then
         specific_hash = hash
@@ -896,15 +896,17 @@ end
 add_help_desc("luafunc:fzf_git_tags",
               "Use fzf for Tags")
 function fzf_git_tags(rl_buffer, line_state)
-    do_fzf_git(rl_buffer, line_state,
-        [[git tag --sort -version:refname]],
-        [[--preview-window right,70% \
-        --border-label '📛 Tags ' \
-        --header 'CTRL-O (open in browser)' \
-        --bind "ctrl-o:execute-silent:bash \"$__fzf_git\" --list tag {}" \
-        --bind 'alt-r:toggle-raw' ]]..
-        [[--preview "git show --color=$(__fzf_git_color .) {}"]]
-    )
+    local command = [[git tag --sort -version:refname]]
+    local args = table.concat({
+        [[--preview-window right,70%]],
+        [[--border-label '📛 Tags ']],
+        [[--header 'CTRL-O (open in browser)']],
+        [[--bind "ctrl-o:execute-silent:bash \"$__fzf_git\" --list tag {}"]],
+        [[--bind 'alt-r:toggle-raw']],
+        [[--preview "git show --color=$(__fzf_git_color .) {}"]],
+    }, " ")
+
+    do_fzf_git(rl_buffer, line_state, command, args)
 end
 
 -- luacheck: globals fzf_git_remotes
@@ -947,44 +949,47 @@ function fzf_git_remotes(rl_buffer, line_state)
         return item:match("^([^\t]*)\t")    -- | cut -d$'\t' -f1
     end
 
-    do_fzf_git(rl_buffer, line_state,
-        list_remotes,
-        [[--tac \
-        --border-label '📡 Remotes ' \
-        --header 'CTRL-O (open in browser)' \
-        --bind "ctrl-o:execute-silent:bash \"$__fzf_git\" --list remote {1}" \
-        --preview-window right,70% ]]..
-            -- IMPORTANT:  fzf-git uses
-            --      --preview "git log --oneline --graph --date=short --color=$(__fzf_git_color .) --pretty='format:%C(auto)%cd %h%d %s' '{1}/$(git rev-parse --abbrev-ref HEAD)' --"]],
-            -- which has been encapsulated into the helper script to port the
-            -- use of $(...) into something that works on Windows.
+    local args = table.concat({
+        [[--tac]],
+        [[--border-label '📡 Remotes ']],
+        [[--header 'CTRL-O (open in browser)']],
+        [[--bind "ctrl-o:execute-silent:bash \"$__fzf_git\" --list remote {1}"]],
+        [[--preview-window right,70%]],
+        -- IMPORTANT:  fzf-git uses
+        --      --preview "git log --oneline --graph --date=short --color=$(__fzf_git_color .) --pretty='format:%C(auto)%cd %h%d %s' '{1}/$(git rev-parse --abbrev-ref HEAD)' --"]],
+        -- which has been encapsulated into the helper script to port the
+        -- use of $(...) into something that works on Windows.
         [[--preview "$helper remotes {1}"]],
-        post_process
-    )
+    }, " ")
+
+    do_fzf_git(rl_buffer, line_state, list_remotes, args, post_process)
 end
 
 local function fzf_git_tree_files(rl_buffer, line_state, ...)
-    local args = ""
+    local diff_args = {}
     local seen = {}
     for _, treeish in ipairs({...}) do
         if not seen[treeish] then
             seen[treeish] = true
-            args = args..maybe_quote(treeish).." "
+            table.insert(diff_args, maybe_quote(treeish))
         end
     end
+    diff_args = table.concat(diff_args, " ")
 
     -- NOTE:  fzf-git.sh applies `sort -u`.  The -u part is implemented above,
     -- but I see no value in sorting by hash.
 
-    do_fzf_git(rl_buffer, line_state,
-        [[git diff-tree --no-commit-id --name-only ]]..args..[[ -r]],
-        [[-m \
-        --border-label "📂 Files in $* " \
-        --header 'CTRL-O (open in browser) ╱ ALT-E (open in editor)' \
-        --bind "ctrl-o:execute-silent:bash \"$__fzf_git\" --list file {}" ]]..
-        bind_alt_e_edit_tree_file..
-        [[--preview "$helper tree_files {}"]]
-    )
+    local command = [[git diff-tree --no-commit-id --name-only ]]..diff_args..[[ -r]]
+    local args = table.concat({
+        [[-m]],
+        [[--border-label "📂 Files in $* "]],
+        [[--header 'CTRL-O (open in browser) ╱ ALT-E (open in editor)']],
+        [[--bind "ctrl-o:execute-silent:bash \"$__fzf_git\" --list file {}"]],
+        bind_alt_e_edit_tree_file,
+        [[--preview "$helper tree_files {}"]],
+    }, " ")
+
+    do_fzf_git(rl_buffer, line_state, command, args)
 end
 
 -- luacheck: globals fzf_git_commit_hashes
@@ -1038,23 +1043,23 @@ fzf_git_commit_hashes = function(rl_buffer, line_state) -- luacheck: no unused
         print("specific_hash", specific_hash)
     end
 
-    do_fzf_git(rl_buffer, line_state,
-        nil,
-        [[--ansi --no-sort --bind 'ctrl-s:toggle-sort,alt-r:toggle-raw' \
-        --border-label '🍡 Hashes ' \
-        --header-lines 2 \
-        --bind 'start:reload:$helper load_hashes ]]..(specific_hash or "")..[[' \
-        --bind "ctrl-o:execute-silent:bash \"$__fzf_git\" --list commit {1}" ]]..
+    local args = table.concat({
+        [[--ansi --no-sort --bind 'ctrl-s:toggle-sort,alt-r:toggle-raw']],
+        [[--border-label '🍡 Hashes ']],
+        [[--header-lines 2]],
+        [[--bind 'start:reload:$helper load_hashes ]]..(specific_hash or "")..[[']],
+        [[--bind "ctrl-o:execute-silent:bash \"$__fzf_git\" --list commit {1}"]],
 -- TODO:  Ctrl-D prints no output and does not accept pager input.  This is an
 -- fzf bug, tracked in:  https://github.com/junegunn/fzf/issues/4260#issuecomment-3931448651
-        [[--bind "ctrl-d:execute:git diff --color=$(__fzf_git_color) {1}" \
-        --bind "alt-a:change-border-label(🍇 All hashes)+reload:$helper load_all_hashes" ]]..
-        [[--bind "alt-enter:accept" \
-        --color hl:underline,hl+:underline \
-        --expect=alt-f \
-        --preview "$helper hashes_preview {1}"]],
-        post_process
-    )
+        [[--bind "ctrl-d:execute:git diff --color=$(__fzf_git_color) {1}"]],
+        [[--bind "alt-a:change-border-label(🍇 All hashes)+reload:$helper load_all_hashes"]],
+        [[--bind "alt-enter:accept"]],
+        [[--color hl:underline,hl+:underline]],
+        [[--expect=alt-f]],
+        [[--preview "$helper hashes_preview {1}"]],
+    }, " ")
+
+    do_fzf_git(rl_buffer, line_state, nil, args, post_process)
 
     os.setenv("__fzf_git_indent", old___fzf_git_indent)
 
@@ -1071,14 +1076,15 @@ function fzf_git_stashes(rl_buffer, line_state)
         return item:match("^([^:]+)")       -- | cut -d: -f1
     end
 
-    do_fzf_git(rl_buffer, line_state,
-        [[git stash list]],
-        [[--border-label '🥡 Stashes ' \
-        --header 'CTRL-X (drop stash)' \
-        --bind 'ctrl-x:reload(git stash drop -q {1} & git stash list)' ]]..
+    local command = [[git stash list]]
+    local args = table.concat({
+        [[--border-label '🥡 Stashes ']],
+        [[--header 'CTRL-X (drop stash)']],
+        [[--bind 'ctrl-x:reload(git stash drop -q {1} & git stash list)']],
         [[-d: --preview "git show --first-parent --color=$(__fzf_git_color .) {1}"]],
-        post_process
-    )
+    }, " ")
+
+    do_fzf_git(rl_buffer, line_state, command, args, post_process)
 end
 
 -- luacheck: globals fzf_git_reflogs
@@ -1089,14 +1095,15 @@ function fzf_git_reflogs(rl_buffer, line_state)
         return item:match("^([^%s]+)")      -- | awk '{print $1}'
     end
 
-    do_fzf_git(rl_buffer, line_state,
-        [[git reflog --color=$(__fzf_git_color) --format="%C(blue)%gD %C(yellow)%h%C(auto)%d %gs"]],
-        [[--ansi \
-        --border-label '📒 Reflogs ' \
-        --bind 'alt-r:toggle-raw' ]]..
+    local command = [[git reflog --color=$(__fzf_git_color) --format="%C(blue)%gD %C(yellow)%h%C(auto)%d %gs"]]
+    local args = table.concat({
+        [[--ansi]],
+        [[--border-label '📒 Reflogs ']],
+        [[--bind 'alt-r:toggle-raw']],
         [[--preview "git show --color=$(__fzf_git_color .) {1}"]],
-        post_process
-    )
+    }, " ")
+
+    do_fzf_git(rl_buffer, line_state, command, args, post_process)
 end
 
 -- luacheck: globals fzf_git_worktrees
@@ -1107,14 +1114,15 @@ function fzf_git_worktrees(rl_buffer, line_state)
         return item:match("^([^%s]+)")      -- | awk '{print $1}'
     end
 
-    do_fzf_git(rl_buffer, line_state,
-        [[git worktree list]],
-        [[--border-label '🌴 Worktrees ' \
-        --header 'CTRL-X (remove worktree)' \
-        --bind 'ctrl-x:reload(git worktree remove {1} > nul & git worktree list)' \
-        --preview "$helper worktree {1} {2}"]],
-        post_process
-    )
+    local command = [[git worktree list]]
+    local args = table.concat({
+        [[--border-label '🌴 Worktrees ']],
+        [[--header 'CTRL-X (remove worktree)']],
+        [[--bind 'ctrl-x:reload(git worktree remove {1} > nul & git worktree list)']],
+        [[--preview "$helper worktree {1} {2}"]],
+    }, " ")
+
+    do_fzf_git(rl_buffer, line_state, command, args, post_process)
 end
 
 -- luacheck: globals fzf_git_eachref
@@ -1125,28 +1133,28 @@ function fzf_git_eachref(rl_buffer, line_state) -- luacheck: no unused
         return string.explode(item)[2]-- | awk '{print $2}'
     end
 
-    do_fzf_git(rl_buffer, line_state,
-        nil,
-        [[--ansi \
-        --nth 2,2.. \
-        --tiebreak begin \
-        --border-label '☘️  Each ref ' \
-        --header-lines 1 \
-        --preview-window down,border-top,40% \
-        --color hl:underline,hl+:underline \
-        --no-hscroll \
-        --bind 'start:reload:bash "$__fzf_git" --list refs' \
-        --bind 'ctrl-/:change-preview-window(down,70%|hidden|)' \
-        --bind "ctrl-o:execute-silent:bash \"$__fzf_git\" --list {1} {2}" ]]..
-        bind_alt_e_edit_git_show..
-        [[--bind "alt-a:change-border-label(🍀 Every ref)+reload:bash \"$__fzf_git\" --list all-refs" ]]..
-            -- IMPORTANT:  fzf-git uses
-            --      --preview "git log --oneline --graph --date=short --color=$(__fzf_git_color .) --pretty='format:%C(auto)%cd %h%d %s' {2} --"
-            -- which has been encapsulated into the helper script to solve the
-            -- problem of quotes/parentheses/etc in a way that works on Windows.
+    local args = table.concat({
+        [[--ansi]],
+        [[--nth 2,2..]],
+        [[--tiebreak begin]],
+        [[--border-label '☘️  Each ref ']],
+        [[--header-lines 1]],
+        [[--preview-window down,border-top,40%]],
+        [[--color hl:underline,hl+:underline]],
+        [[--no-hscroll]],
+        [[--bind 'start:reload:bash "$__fzf_git" --list refs']],
+        [[--bind 'ctrl-/:change-preview-window(down,70%|hidden|)']],
+        [[--bind "ctrl-o:execute-silent:bash \"$__fzf_git\" --list {1} {2}"]],
+        bind_alt_e_edit_git_show,
+        [[--bind "alt-a:change-border-label(🍀 Every ref)+reload:bash \"$__fzf_git\" --list all-refs"]],
+        -- IMPORTANT:  fzf-git uses
+        --      --preview "git log --oneline --graph --date=short --color=$(__fzf_git_color .) --pretty='format:%C(auto)%cd %h%d %s' {2} --"
+        -- which has been encapsulated into the helper script to solve the
+        -- problem of quotes/parentheses/etc in a way that works on Windows.
         [[--preview "$helper eachref {2}"]],
-        post_process
-    )
+    }, " ")
+
+    do_fzf_git(rl_buffer, line_state, nil, args, post_process)
 end
 
 --------------------------------------------------------------------------------
