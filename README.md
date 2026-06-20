@@ -32,7 +32,7 @@ The "modules" subdirectory contains helper scripts that are used by the scripts 
 
 Script Name | Description
 -|-
-[abbr.lua](abbr.lua) | Reads abbreviations and corresponding expansions from a .abbr file.  Pressing <kbd>Space</kbd> after an abbreviation replaces it with the corresponding expansion.  Refer to the usage information in the script file for details.
+[abbr.lua](abbr.lua) | Reads abbreviations and corresponding expansions from a `.abbr` file.  Pressing <kbd>Space</kbd> after an abbreviation replaces it with the corresponding expansion.  Refer to the usage information in the script file for details.
 [auto_argmatcher.lua](auto_argmatcher.lua) | Reads a config file and automatically creates argmatchers (completion generators) for specified programs by parsing their help text output.  Refer to the usage information in the script file for details.
 [autopull.lua](autopull.lua) | Periodically runs `git pull` in a configurable list of directories.  Refer to the usage information in the script file for details.
 [codepoints_hinter.lua](codepoints_hinter.lua) | Can display a hint showing the Unicode codepoints for the non-ASCII character at the cursor position, if the `comment_row.show_hints` setting is enabled.  If not already bound to something else, <kbd>Alt</kbd>-<kbd>F1</kbd> toggles immediate display of codepoints, even if the `codepoints.show_preview` setting is false (the key binding requires Clink v1.7.5 or newer).  Refer to the usage information in the script file for details.
@@ -52,6 +52,7 @@ Script Name | Description
 [matchicons.lua](matchicons.lua) | Can show nerd font icons in file and directory completions.  Run `clink set matchicons.enable true` to enable it.  Refer to the usage information in the script file for details.
 [noclink.lua](noclink.lua) | This and the [noclink.cmd](noclink.cmd) script let you temporarily disable/reenable Clink (or Clink's prompt filtering).  Run `noclink -?` for help.
 [scmapi.lua](scmapi.lua) | Allows other scripts to automatically add support for other source control systems into [Clink's Lua `git` APIs](https://chrisant996.github.io/clink/clink.html#git).
+[redact_history.lua](redact_history.lua) | Reads patterns from a `.redact_history` file and uses them to block commands from being saved in the history or redact what gets saved in the history.  Refer to the usage information in the script file for details.
 [scmhg.lua](scmhg.lua) | Uses scmapi.lua to add support for `hg` ([Mercurial](https://www.mercurial-scm.org/)).  Disabled by default; refer to the usage information in the script for how to enable it.
 [scmsvn.lua](scmsvn.lua) | Uses scmapi.lua to add support for `svn` ([Subversion](https://subversion.apache.org/)).  Disabled by default; refer to the usage information in the script for how to enable it.
 [show_tips.lua](show_tips.lua) | Shows a tip about Clink each time Clink is injected.
