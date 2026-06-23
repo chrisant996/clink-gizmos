@@ -19,7 +19,7 @@
 --
 -- FILE LOCATION:
 --
---  Each of the following directories are checked, in the order list.  Each
+--  Each of the following directories are checked, in the order listed.  Each
 --  .abbr file in any of these directories is loaded.  In the case of duplicate
 --  abbreviations in different files, the last one loaded wins.
 --
