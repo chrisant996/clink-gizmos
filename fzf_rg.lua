@@ -534,7 +534,8 @@ end
 
 local function escape_quotes(s, how)
     how = how or '\\"'
-    return s:gsub('"', how)
+    local ret = s:gsub('"', how) -- Intermediate variable discards the extra return values.
+    return ret
 end
 
 local function chcp(cp)
@@ -592,6 +593,7 @@ local function get_reload_command()
     has_rg = true
 
     -- This is the ripgrep command to run.
+    local custom_opts = (os.getenv("FZF_RG_RG_OPTIONS") or ""):gsub("\\", "\\\\")
     local rg_command = table.concat({
         "2>&1", -- So that errors can be seen, esp. from bad FZF_RG_RG_OPTIONS.
         "rg.exe",
@@ -600,7 +602,7 @@ local function get_reload_command()
         "--no-heading",
         "--color="..get_color_mode(),
         "--smart-case",
-        escape_quotes(os.getenv("FZF_RG_RG_OPTIONS") or ""),
+        escape_quotes(custom_opts),
         "{q}",
     }, " ")
 
