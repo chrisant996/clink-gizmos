@@ -558,6 +558,68 @@ clink.onbeginedit(function ()
 end)
 
 --------------------------------------------------------------------------------
+if clink.suggester then
+    local sug = clink.suggester("cwdhistory")
+
+    local function escape_pattern(pattern)
+        local escaped = pattern:gsub("([%-^$()[%]*+?])", "%%%1")
+        return escaped
+    end
+
+    local function get_word_at_cursor(line_state)
+        if line_state:getwordcount() > 0 then
+            local info = line_state:getwordinfo(line_state:getwordcount())
+            if info then
+                local line = line_state:getline()
+                local word = line:sub(info.offset, line_state:getcursor() - 1)
+                if word and #word > 0 then
+                    word = word:gsub('"', '')
+                    word = word:gsub("'", '')
+                    return word
+                end
+            end
+        end
+    end
+
+    function sug:suggest(line_state, matches, limit) -- luacheck: no unused
+        if line_state:getwordcount() ~= 1 then
+            return
+        end
+        local word = get_word_at_cursor(line_state)
+        if word and #word > 0 then
+            local suggestions
+            local num = 0
+            local anchor = word:find("[/\\]") and "" or "[/\\]"
+            local pat = escape_pattern(word)
+            for i = #cwd_history_list, 1, -1 do
+                local entry = cwd_history_list[i]
+                local dir = entry.dir:gsub("[/\\]+$", "").."\\"
+                local a, b, c, d = dir:find(anchor.."()"..pat.."()") -- luacheck: no unused
+                if a then
+                    if not limit then
+                        return dir, 1
+                    else
+                        suggestions = suggestions or {}
+                        table.insert(suggestions, { dir, 1, highlight={ c, d - c } })
+                        num = num + 1
+                        if num >= 2 or num >= limit then
+                            break
+                        end
+                    end
+                end
+            end
+            --[[
+            if suggestions then
+                clink.print("\x1b[J", NONL)
+                dumpvar(suggestions, 3)
+            end
+            --]]
+            return suggestions
+        end
+    end
+end
+
+--------------------------------------------------------------------------------
 if rl.setbinding then
     if not rl.getbinding([["\e[5;2~"]]) then
         rl.setbinding([["\e[5;2~"]], [["luafunc:cwdhistory_popup"]])
