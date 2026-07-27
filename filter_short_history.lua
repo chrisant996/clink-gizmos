@@ -10,7 +10,7 @@ end
 
 settings.add("history.minimum_length", 0,
     "Skip adding lines shorter than this",
-    "The minimum length of a line that will be added to the history.  Any line\n"
+    "The minimum length of a line that will be added to the history.  Any line\n"..
     "shorter than this value will not be added to the history.")
 
 local function filter_short_history(line)
