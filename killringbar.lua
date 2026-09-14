@@ -151,20 +151,22 @@ end
 -- OnAfterCommand event (refreshes the kill-ring bar).
 
 clink.onaftercommand(function()
-    local kri = rl.getkillringindex()
-    local krs = rl.getkillringstrings()
-    local changed = (last_index ~= kri) or (#last_strings ~= #krs)
-    if not changed then
-        for i = #krs, 1, -1 do
-            if last_strings[i] ~= krs[i] then
-                changed = true
-                break
+    if settings.get("killringbar.enable") then
+        local kri = rl.getkillringindex()
+        local krs = rl.getkillringstrings()
+        local changed = (last_index ~= kri) or (#last_strings ~= #krs)
+        if not changed then
+            for i = #krs, 1, -1 do
+                if last_strings[i] ~= krs[i] then
+                    changed = true
+                    break
+                end
             end
         end
-    end
-    if changed then
-        last_strings = krs
-        clink.refilterprompt()
+        if changed then
+            last_strings = krs
+            clink.refilterprompt()
+        end
     end
 end)
 
