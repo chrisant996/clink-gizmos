@@ -1120,6 +1120,28 @@ local function get_file_icon(name)
     end
 end
 
+local function get_match_icon(m)
+    if m.type then
+        if m.type:find("file") then
+            local text = path.getname(m.match)
+            local icon = get_file_icon(text)
+            if not icon then
+                if m.type:find("link") then
+                    icon = get_icon("FILE_LINK")
+                else
+                    local ext = path.getextension(text) or ""
+                    icon = get_icon(ext == "" and "FILE_OUTLINE" or "FILE")
+                end
+            end
+            return icon
+        elseif m.type:find("dir") then
+            local text = get_dir_name(m.match)
+            local icon = get_dir_icon(text) or get_icon(m.type:find("link") and "FOLDER_LINK" or "FOLDER")
+            return icon
+        end
+    end
+end
+
 local function backfill_icons(matches)
     for _, m in ipairs(matches) do
         if m.type and (not m.display or not already_added[m.display]) then
@@ -1136,6 +1158,8 @@ local function backfill_icons(matches)
                 icon = get_icon("OS_WINDOWS_CMD")
             elseif not m.type:find("file") and not m.type:find("dir") then
                 icon = UNKNOWN_ICON
+            elseif not m.display then
+                icon = get_match_icon(m)
             end
 
             -- If an icon was chosen, jam it together with a color and the match
@@ -1190,28 +1214,6 @@ local function init(nobackfill, force)
             clink.ondisplaymatches(ondisplaymatches)
         end
         return true
-    end
-end
-
-local function get_match_icon(m)
-    if m.type then
-        if m.type:find("file") then
-            local text = path.getname(m.match)
-            local icon = get_file_icon(text)
-            if not icon then
-                if m.type:find("link") then
-                    icon = get_icon("FILE_LINK")
-                else
-                    local ext = path.getextension(text) or ""
-                    icon = get_icon(ext == "" and "FILE_OUTLINE" or "FILE")
-                end
-            end
-            return icon
-        elseif m.type:find("dir") then
-            local text = get_dir_name(m.match)
-            local icon = get_dir_icon(text) or get_icon(m.type:find("link") and "FOLDER_LINK" or "FOLDER")
-            return icon
-        end
     end
 end
 
