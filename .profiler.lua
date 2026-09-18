@@ -20,6 +20,7 @@
 
 --------------------------------------------------------------------------------
 if rl.describemacro then
+    -- luacheck: no max line length
     rl.describemacro("luafunc:clink_enable_profile_editline", "Enable Lua profiling (from onbeginedit through onendedit)")
     rl.describemacro("luafunc:clink_disable_profile_editline", "Disable Lua profiling (from onbeginedit through onendedit)")
     rl.describemacro("luafunc:clink_toggle_profile_editline", "Toggle Lua profiling (from onbeginedit through onendedit)")
