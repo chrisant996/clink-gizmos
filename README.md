@@ -66,6 +66,7 @@ Script Name | Description
 [where_hinter.lua](where_hinter.lua) | Can display a hint showing the location of the executable file in the command at the cursor position, if the `comment_row.show_hints` setting is enabled.  Refer to the usage information in the script file for details.
 [z_dir_popup.lua](z_dir_popup.lua) | If you use [z.lua](https://github.com/skywind3000/z.lua) then this provides a popup listing of directories from z.  Refer to the usage information in the script file for details.
 [zoxide_dir_popup.lua](zoxide_dir_popup.lua) | If you use [zoxide](https://github.com/ajeetdsouza/zoxide) then this provides a popup listing of directories from zoxide.  Refer to the usage information in the script file for details.
+[.profiler.lua](.profiler.lua) | Uses the lua-profiler by Charles Mallah to capture profiling and save a report to profiler.log in the current Clink profile directory.  Refer to the usage information in the script file for details.
 
 # Setting up FZF
 
