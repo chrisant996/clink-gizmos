@@ -90,6 +90,8 @@ function fully_qualify_path(rl_buffer)
         return
     end
 
+    new = maybe_quote(new)
+
     local cursor_delta = math.max(0, rl_buffer:getcursor() - (start + len))
     rl_buffer:beginundogroup()
     rl_buffer:setcursor(start)
