@@ -335,7 +335,6 @@ function cwdhistory_popup(rl_buffer) -- luacheck: no global
         update_history()
     end
     if not value then
-        rl_buffer:ding()
         return
     end
 
