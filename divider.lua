@@ -60,6 +60,15 @@ if not clink.onbeginedit or not clink.onendedit or not console.cellcount then
 end
 
 local settings_list = {
+    ["divider_line.enable"] =
+        {
+            default = true,
+            shortdesc = "Enables a divider line for some commands",
+            longdesc =
+                "When this is true, a divider line may be shown before and after certain\n"..
+                "commands, or after commands that take longer than a certain threshold.\n"..
+                "See other 'divider_line.*' settings to fine-tune the behavior.",
+        },
     ["divider_line.commands"] =
         {
             default = "make nmake msbuild",
@@ -87,7 +96,7 @@ local settings_list = {
             default = "",
             shortdesc = "Color for command divider line text",
             longdesc =
-                "When the color is blank, color.divider_line is used for the divider line text.",
+                "When the color is blank, 'color.divider_line' is used for the divider line text.",
         },
     ["color.divider_line_end"] =
         {
@@ -101,15 +110,15 @@ local settings_list = {
             default = "",
             shortdesc = "Color for duration in command end divider line",
             longdesc =
-                "When the color is blank, color.divider_line is used for the duration text.",
+                "When the color is blank, 'color.divider_line' is used for the duration text.",
         },
     ["color.transient_divider_line"] =
         {
             default = "38;5;240",
             shortdesc = "Color for transient divider line",
             longdesc =
-                "When a command duration exceeds divider_line.min_duration seconds but the\n"..
-                "command was not in divider_line.commands, then the transient prompt shows\n"..
+                "When a command duration exceeds 'divider_line.min_duration' seconds but the\n"..
+                "command was not in 'divider_line.commands', then the transient prompt shows\n"..
                 "a divider line with the duration so it stays visible for old commands.\n"..
                 "When this color is blank, the transient divider line is omitted.",
         },
@@ -130,14 +139,14 @@ local settings_list = {
             default = {"off","duration","always"},
             shortdesc = "Controls when to show transient divider line",
             longdesc =
-                "Optionally, divider line can shown before a transient prompt, if transient\n"..
-                "prompts are enabled (by the prompt.transient setting).\n"..
+                "Optionally, divider line can be shown before a transient prompt, if transient\n"..
+                "prompts are enabled (by the 'prompt.transient' setting).\n"..
                 "When this is 'off' then no transient divider line is shown.\n"..
                 "When this is 'duration' then a transient divider line is shown when the\n"..
-                "duration of the preceding command exceeds divider_line.transient_duration,\n"..
+                "duration of the preceding command exceeds 'divider_line.transient_duration',\n"..
                 "and the divider line includes the duration.\n"..
                 "When this is 'always' then a transient divider line is shown unless the\n"..
-                "command line was empty.  If the duration exceeds divider.transient_duration,\n"..
+                "command line was empty.  If the duration exceeds 'divider.transient_duration',\n"..
                 "the divider line includes the duration.",
         },
 }
@@ -296,41 +305,47 @@ local function get_command_duration(begin_time)
 end
 
 local function make_divider_begin(line, transient)
-    local command = is_divider_command(line)
-    if command then
-        local line_color = sgr("0;" .. get_color("divider_line"))
-        local text_color = get_color("divider_line_text")
-        if not text_color or text_color == "" then
-            text_color = line_color
-        else
-            text_color = sgr("0;" .. text_color)
-        end
-
-        local hilite = sgr(divider_line.top_line_hilite_color or "1;97")
-        local lolite = sgr(divider_line.top_line_lolite_color or "38;5;252")
-        local top_char = divider_line.top_line_char or "-"
-        local div = string.format("%s%s%s in %s%s%s at %s%s",
-                                  hilite, clink.upper(command), text_color,
-                                  lolite, os.getcwd(), text_color,
-                                  os.date(), text_color)
-        if divider_line.left_justify_top then
-            local cellcount = console.cellcount(div) + 2   -- spc + text + spc
-            if cellcount >= console.getwidth() then
-                div = text_color .. nbsp .. div .. nbsp
-            else
-                div = text_color .. nbsp .. div .. " " .. line_color
-            end
-        else
-            local bar = string.rep(top_char, 4)
-            div = line_color .. bar .. text_color .. " " .. div .. " " .. line_color .. bar
-        end
-        local max_width = console.getwidth() - (divider_line.align_right and 0 or 1)
-        div = div .. string.rep(top_char, max_width - console.cellcount(div)) .. sgr() .. "\n"
-        if transient and flexprompt and flexprompt.get_spacing and flexprompt.get_spacing() == "sparse" then
-            div = "\n" .. div
-        end
-        return div
+    if not get_setting("enable") then
+        return
     end
+
+    local command = is_divider_command(line)
+    if not command then
+        return
+    end
+
+    local line_color = sgr("0;" .. get_color("divider_line"))
+    local text_color = get_color("divider_line_text")
+    if not text_color or text_color == "" then
+        text_color = line_color
+    else
+        text_color = sgr("0;" .. text_color)
+    end
+
+    local hilite = sgr(divider_line.top_line_hilite_color or "1;97")
+    local lolite = sgr(divider_line.top_line_lolite_color or "38;5;252")
+    local top_char = divider_line.top_line_char or "-"
+    local div = string.format("%s%s%s in %s%s%s at %s%s",
+                              hilite, clink.upper(command), text_color,
+                              lolite, os.getcwd(), text_color,
+                              os.date(), text_color)
+    if divider_line.left_justify_top then
+        local cellcount = console.cellcount(div) + 2   -- spc + text + spc
+        if cellcount >= console.getwidth() then
+            div = text_color .. nbsp .. div .. nbsp
+        else
+            div = text_color .. nbsp .. div .. " " .. line_color
+        end
+    else
+        local bar = string.rep(top_char, 4)
+        div = line_color .. bar .. text_color .. " " .. div .. " " .. line_color .. bar
+    end
+    local max_width = console.getwidth() - (divider_line.align_right and 0 or 1)
+    div = div .. string.rep(top_char, max_width - console.cellcount(div)) .. sgr() .. "\n"
+    if transient and flexprompt and flexprompt.get_spacing and flexprompt.get_spacing() == "sparse" then
+        div = "\n" .. div
+    end
+    return div
 end
 
 local function maybe_print_divider_end()
@@ -387,8 +402,13 @@ local function filter_div_prompt()
         -- Defer adding the event handler for printing the divider end line to
         -- make sure it's printed AFTER flexprompt applies its 'spacing' mode.
         clink.onbeginedit(function ()
-            div_end_preceeds_prompt = maybe_print_divider_end()
-            div_can_divide = true
+            if get_setting("enable") then
+                div_end_preceeds_prompt = maybe_print_divider_end()
+                div_can_divide = true
+            else
+                div_end_preceeds_prompt = nil
+                div_can_divide = nil
+            end
         end)
         inited_beginedit = true
     end
@@ -406,7 +426,7 @@ local function transientfilter_div_prompt(prompt)
 end
 
 local function onendedit_div_prompt(line)
-    if is_divider_command(line) then
+    if get_setting("enable") and is_divider_command(line) then
         div_mode_command = true
         if isnilorempty(get_color("divider_line_end")) then
             div_mode_transient = true
@@ -569,10 +589,12 @@ function pf:transientrightfilter(prompt) -- luacheck: no unused
 end
 
 clink.onendedit(function(line)
-    div_begin = os.clock()
-    div_mode_command = nil
-    div_mode_transient = nil
-    onendedit_div_prompt(line)
-    onendedit_transient_line_prompt(line)
+    if get_setting("enable") then
+        div_begin = os.clock()
+        div_mode_command = nil
+        div_mode_transient = nil
+        onendedit_div_prompt(line)
+        onendedit_transient_line_prompt(line)
+    end
 end)
 
