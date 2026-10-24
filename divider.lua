@@ -3,6 +3,9 @@
 -- commands.  The line is intended to make it easier to see where output from
 -- certain commands begins and ends (for example, commpilers and build tools).
 --
+-- If the 'command_frame.enable' setting is true, then this script defers to
+-- that and won't print any additional divider lines.
+--
 --
 --TODO: document new behaviors.
 --
@@ -202,6 +205,10 @@ local function get_color(name)
     end
 end
 
+local function is_enabled()
+    return get_setting("enable") and not settings.get("command_frame.enable")
+end
+
 local function isnilorempty(s)
     return s == nil or s == ""
 end
@@ -305,7 +312,7 @@ local function get_command_duration(begin_time)
 end
 
 local function make_divider_begin(line, transient)
-    if not get_setting("enable") then
+    if not is_enabled() then
         return
     end
 
@@ -402,7 +409,7 @@ local function filter_div_prompt()
         -- Defer adding the event handler for printing the divider end line to
         -- make sure it's printed AFTER flexprompt applies its 'spacing' mode.
         clink.onbeginedit(function ()
-            if get_setting("enable") then
+            if is_enabled() then
                 div_end_preceeds_prompt = maybe_print_divider_end()
                 div_can_divide = true
             else
@@ -426,7 +433,7 @@ local function transientfilter_div_prompt(prompt)
 end
 
 local function onendedit_div_prompt(line)
-    if get_setting("enable") and is_divider_command(line) then
+    if is_enabled() and is_divider_command(line) then
         div_mode_command = true
         if isnilorempty(get_color("divider_line_end")) then
             div_mode_transient = true
@@ -589,7 +596,7 @@ function pf:transientrightfilter(prompt) -- luacheck: no unused
 end
 
 clink.onendedit(function(line)
-    if get_setting("enable") then
+    if is_enabled() then
         div_begin = os.clock()
         div_mode_command = nil
         div_mode_transient = nil
