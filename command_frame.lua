@@ -8,6 +8,12 @@
 -- For example, 'clink set command_frame.enable true' turns on the command
 -- frames.
 --
+-- Many commands and programs add an extra blank line at the end of their
+-- output, which can look messy with the divider lines.  Clink can optionally
+-- remove blank lines from the end of command output.  You can enable that by
+-- running 'clink set prompt.spacing compact' or 'clink set prompt.spacing
+-- sparse' (https://chrisant996.github.io/clink/clink.html#prompt_spacing).
+--
 --
 -- PRIMARY ON/OFF SETTING:
 --
