@@ -352,11 +352,11 @@ end
 
 local function format_error_level(errorlevel)
     local text = ""
-    if errorlevel and errorlevel ~= 0 then
+    if type(errorlevel) == "number" and errorlevel ~= 0 then
         if errorlevel >= -65535 and errorlevel <= 65535 then
             text = string.format(" exit %d ", errorlevel)
         else
-            text = string.format(" exit 0x%x ", errorlevel)
+            text = string.format(" exit 0x%x ", bit32.band(errorlevel, 0xffffffff))
         end
     end
     return text
