@@ -32,6 +32,14 @@
 --                  Set to 'round' for rounded corners, or 'square' for squared
 --                  corners, or 'line' for straight divider lines.
 --
+--  command_frame.transient_spacing
+--                  When this is true and 'prompt.spacing' is 'sparse', then a
+--                  blank line is printed before a transient prompt if a
+--                  command frame was present for the previous command or if a
+--                  command frame will be present for the next command (but
+--                  this can't predict what the 'command_frame.auto_remove'
+--                  setting will end up doing).
+--
 --  command_frame.use_ascii
 --                  Set to true to use only ASCII characters (the minus sign).
 --
@@ -92,8 +100,7 @@
 --
 --------------------------------------------------------------------------------
 
-if not clink.onbeginedit or
-        not clink.onendedit or
+if not clink.onendedit or
         not console.cellcount or
         not console.plaintext or
         not os.geterrorlevel or
@@ -130,6 +137,17 @@ local settings_list = {
             longdesc =
                 "This chooses the corner and line shape for the divider lines.  This has no"..
                 "effect when 'command_frame.use_ascii' is true.",
+        },
+    ["command_frame.transient_spacing"] =
+        {
+            default = true,
+            shortdesc = "May add a blank before transient prompt",
+            longdesc =
+                "When this is true and 'prompt.spacing' is 'sparse', then a blank line is\n"..
+                "printed before a transient prompt if a command frame was present for the\n"..
+                "previous command or if a command frame will be present for the next command\n"..
+                "(but this can't predict what the 'command_frame.auto_remove' setting will\n"..
+                "end up doing).",
         },
     ["command_frame.use_ascii"] =
         {
@@ -251,17 +269,16 @@ end
 
 local U = unicode.char
 
-local command_frame = {}
-command_frame.shapes = {}
-command_frame.shapes.round = {
+local shapes = {}
+shapes.round = {
     top_chars    = { U(0x256d), U(0x2500), U(0x256e) },
     bottom_chars = { U(0x2570), U(0x2500), U(0x256f) },
 }
-command_frame.shapes.square = {
+shapes.square = {
     top_chars    = { U(0x250c), U(0x2500), U(0x2510) },
     bottom_chars = { U(0x2514), U(0x2500), U(0x2518) },
 }
-command_frame.shapes.line = {
+shapes.line = {
     top_chars    = { U(0x2500) },
     bottom_chars = { U(0x2500) },
 }
@@ -322,7 +339,7 @@ end
 
 local function get_top_chars()
     local shape = get_setting("shape")
-    local chars = can_use_lines() and command_frame.shapes[shape].top_chars or { "-" }
+    local chars = can_use_lines() and shapes[shape].top_chars or { "-" }
     local left_corner = chars[1]
     local line_char = chars[3] and chars[2] or chars[1]
     local right_corner = chars[3] and chars[3] or chars[1]
@@ -331,7 +348,7 @@ end
 
 local function get_bottom_chars()
     local shape = get_setting("shape")
-    local chars = can_use_lines() and command_frame.shapes[shape].bottom_chars or { "-" }
+    local chars = can_use_lines() and shapes[shape].bottom_chars or { "-" }
     local left_corner = chars[1]
     local line_char = chars[3] and chars[2] or chars[1]
     local right_corner = chars[3] and chars[3] or chars[1]
@@ -341,6 +358,7 @@ end
 local div_begin
 local prev_begin_divider
 local can_auto_remove
+local was_printed
 
 local function add_margin(text)
     return isnilorempty(text) and "" or (" "..text.." ")
@@ -541,6 +559,9 @@ local function maybe_print_divider_end()
         text_color = sgr("0;"..text_color)
     end
 
+    -- Record that a command frame was printed before the current prompt.
+    was_printed = true
+
     local left_corner, line_char, right_corner = get_bottom_chars()
 
     local div_left = table.concat({
@@ -578,16 +599,7 @@ local function maybe_print_divider_end()
     print()
 end
 
---------------------------------------------------------------------------------
--- Shared functions.
-
-local pf = clink.promptfilter(-999999)
-
-function pf:filter(prompt) -- luacheck: no unused
-    maybe_print_divider_end()
-end
-
-clink.onendedit(function(line)
+local function needs_frame(line)
     if line:gsub(" ", "") == "" then
         return
     end
@@ -624,6 +636,50 @@ clink.onendedit(function(line)
                 always = true
             end
         end
+    end
+
+    return true, always
+end
+
+local function is_command_frame_likely()
+    if rl_state and
+            rl_state.line_buffer and
+            needs_frame(rl_state.line_buffer) then
+        return true
+    end
+end
+
+--------------------------------------------------------------------------------
+-- Prompt filters.
+
+local pf_before = clink.promptfilter(-999999)
+local pf_after = clink.promptfilter(999999)
+
+function pf_before:filter(prompt) -- luacheck: no unused
+    maybe_print_divider_end()
+end
+
+function pf_after:filter(prompt) -- luacheck: no unused
+end
+
+function pf_after:transientfilter(prompt) -- luacheck: no unused
+    if get_setting("enable") and
+            settings.get("prompt.spacing") == "sparse" and
+            get_setting("transient_spacing") and
+            (was_printed or is_command_frame_likely()) then
+        return "\n"..prompt
+    end
+end
+
+--------------------------------------------------------------------------------
+-- Event handlers.
+
+clink.onendedit(function(line)
+    was_printed = nil
+
+    local need, always = needs_frame(line)
+    if not need then
+        return
     end
 
     can_auto_remove = not always
