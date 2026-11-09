@@ -616,6 +616,14 @@ local function needs_frame(line)
     end
 
     local conditional_commands = {}
+
+    -- Ignore 'cd' commands, as they only produce output on errors (which are
+    -- rare) or when there's no directory argument.  Those don't really need a
+    -- command frame.  The main motivation for this was to avoid a confusing
+    -- initial command frame when the cwdhistory.restore setting sets the
+    -- initial directory.
+    conditional_commands.cd = "never"
+
     for _, c in ipairs(string.explode(clink.lower(get_setting("never_commands")))) do
         conditional_commands[clink.lower(c)] = "never"
     end
@@ -623,22 +631,50 @@ local function needs_frame(line)
         conditional_commands[clink.lower(c)] = "always"
     end
 
-    local always
+    -- Ignore directory shortcuts, unless 'cd' has been overridden by the
+    -- command_frame.always_commands setting.
     local commands = clink.parseline(line)
-    for _, c in ipairs(commands) do
-        local ls = c.line_state
-        for i = 1, ls:getwordcount() do
-            local w = path.getbasename(ls:getword(i))
-            local x = conditional_commands[clink.lower(w)]
-            if x == "never" then
+    if commands and commands[1] then
+        local ls = commands[1].line_state
+        if ls:getwordcount() == 1 then
+            local w1 = ls:getword(1)
+            local shortcut
+            local check_isdir
+            if w1 == "-" then
+                shortcut = true
+            elseif w1:sub(1, 2) == ".." and w1:gsub("%.", "") == "" then
+                shortcut = true
+            elseif w1:find("[/\\]$") then
+                shortcut = true
+                check_isdir = true
+            end
+            if shortcut and
+                    conditional_commands.cd == "never" and
+                    (not check_isdir or os.isdir(w1)) then
                 return
-            elseif x == "always" then
-                always = true
             end
         end
     end
 
-    return true, always
+    local maybe, always
+    for _, c in ipairs(commands) do
+        local ls = c.line_state
+        local cwi = ls:getcommandwordindex()
+        local cw = ls:getword(cwi)
+        local w = path.getbasename(cw)
+        local x = conditional_commands[clink.lower(w)]
+        if x == "always" then
+            -- always_commands has the highest precedence.
+            always = true
+        elseif x ~= "never" then
+            -- never_commands is superseded if any command is not in that list.
+            maybe = true
+        end
+    end
+
+    if always or maybe then
+        return true, always
+    end
 end
 
 local function is_command_frame_likely()
